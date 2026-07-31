@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>طلبات القطع بين الفروع</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#cc785c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="طلبات القطع">
+<link rel="apple-touch-icon" href="assets/logo.png">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
@@ -393,6 +399,7 @@
       <div class="hd-actions">
         <span class="conn-dot loading" id="connDot" title="حالة الاتصال بالسحابة">جاري الاتصال…</span>
         <button class="newreq-btn" onclick="openSheet()">+ طلب قطع</button>
+        <button class="icon-btn" id="notifBtn" onclick="enableNotifications()" title="فعّل إشعارات الجوال">🔕</button>
         <button class="icon-btn" id="soundBtn" onclick="toggleSound()" title="تنبيه صوتي">🔔</button>
         <button class="logout" onclick="logout()">خروج</button>
       </div>
@@ -605,6 +612,51 @@ function setConn(state, text){
 window.addEventListener("online",()=>{ if(firestoreReady) setConn("online","متصل"); });
 window.addEventListener("offline",()=>setConn("offline","غير متصل"));
 
+/* ===================== إشعارات الجوال (Web Push) ===================== */
+const VAPID_PUBLIC="BKBvoud5igKzASsCvZiEGWDoaGuolAO8U67975sJIMzAYbR0SexpoHVpsEd79Hl2sZmhV3hci7L6A53I6Nd6tTA";
+function urlB64ToUint8(base64){
+  const pad="=".repeat((4-base64.length%4)%4);
+  const b64=(base64+pad).replace(/-/g,"+").replace(/_/g,"/");
+  const raw=atob(b64), arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+let swReg=null;
+async function ensureSW(){
+  if(!("serviceWorker" in navigator))return null;
+  if(swReg)return swReg;
+  try{ swReg=await navigator.serviceWorker.register("sw.js"); return swReg; }
+  catch(e){ console.warn("SW register:",e); return null; }
+}
+async function subscribePush(){
+  if(!me) return;
+  if(!("Notification" in window)||Notification.permission!=="granted") return;
+  const reg=await ensureSW(); if(!reg||!("PushManager" in window)) return;
+  try{
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlB64ToUint8(VAPID_PUBLIC)});
+    const j=sub.toJSON();
+    const key="s_"+(j.endpoint||"").replace(/[^a-zA-Z0-9]/g,"").slice(-40);
+    await db.collection("subs").doc(key).set({branchId:me.id, subscription:j, endpoint:j.endpoint, updatedAt:Date.now()});
+  }catch(e){ console.warn("subscribePush:",e); }
+}
+async function enableNotifications(){
+  if(!("Notification" in window)){ toast("جهازك لا يدعم إشعارات المتصفح"); return; }
+  try{
+    const perm=await Notification.requestPermission();
+    if(perm==="granted"){ await subscribePush(); toast("تم تفعيل إشعارات الجوال ✓"); }
+    else if(perm==="denied"){ toast("الإشعارات محظورة — فعّلها من إعدادات المتصفح"); }
+  }catch(e){ console.warn(e); }
+  refreshNotifBtn();
+}
+function refreshNotifBtn(){
+  const b=document.getElementById("notifBtn"); if(!b) return;
+  const on=("Notification" in window)&&Notification.permission==="granted";
+  b.textContent=on?"📲":"🔕";
+  b.title=on?"إشعارات الجوال مفعّلة":"فعّل إشعارات الجوال";
+  b.classList.toggle("muted",!on);
+}
+
 // تحويل طلب لصيغة Firestore (id كنص للـ document id)
 function reqDocId(r){ return String(r.id); }
 
@@ -726,6 +778,8 @@ function enter(b){
   $("#hdBranch").textContent=b.name;
   $("#f-to").innerHTML=BRANCHES.filter(x=>x.id!==b.id).map(x=>`<option value="${x.id}">${x.name}</option>`).join("");
   refreshSoundBtn();
+  refreshNotifBtn();
+  subscribePush();  // إعادة الاشتراك تلقائياً إن كان الإذن ممنوحاً مسبقاً
   render();
 }
 function logout(){ auth.signOut(); }  // onAuthStateChanged يعيد عرض شاشة الدخول
@@ -952,7 +1006,7 @@ function submitReq(){
     closeSheet();toast("تم حفظ التعديل");
   }else{
     const req={
-      id:newReqId(), from:me.id, to:+$("#f-to").value, t:Date.now(), note,
+      id:newReqId(), from:me.id, to:+$("#f-to").value, t:Date.now(), note, notified:false,
       items:items.map(it=>({id:newItemId(),part:it.part,name:it.name,qty:it.qty,status:"pending"}))
     };
     saveReqToCloud(req);

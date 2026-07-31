@@ -1,0 +1,22 @@
+name: push-notify
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # كل 5 دقائق
+  workflow_dispatch:          # تشغيل يدوي للاختبار
+permissions:
+  contents: read
+concurrency:
+  group: push-notify
+  cancel-in-progress: false
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm init -y && npm install web-push
+      - run: node notify/send.js
+        env:
+          VAPID_PRIVATE: ${{ secrets.VAPID_PRIVATE }}

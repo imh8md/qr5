@@ -1,0 +1,16 @@
+{
+  "name": "طلبات القطع بين الفروع",
+  "short_name": "طلبات القطع",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f4ef",
+  "theme_color": "#cc785c",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    { "src": "assets/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
