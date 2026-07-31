@@ -588,6 +588,8 @@ const auth = firebase.auth();
 db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn("Persistence:",e.code));
 
 const H=1000*60*60;
+// نافذة القراءة: نستمع فقط لطلبات آخر 60 يوم (يقلّل قراءات Firestore ويبقيك في الخطة المجانية)
+const READ_WINDOW_DAYS=60;
 let REQS = [];
 let firestoreReady = false;
 
@@ -629,7 +631,8 @@ let listenerAttached=false;
 function startListener(){
   if(listenerAttached)return;
   listenerAttached=true;
-  db.collection("requests").onSnapshot(snap=>{
+  const cutoff = Date.now() - READ_WINDOW_DAYS*86400000;
+  db.collection("requests").where("t",">=",cutoff).onSnapshot(snap=>{
     REQS = snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
     firestoreReady = true;
     const source = snap.metadata.fromCache ? "cache" : "server";
