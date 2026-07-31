@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>طلبات القطع بين الفروع</title>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <style>
   @font-face{font-family:'Handicrafts';font-weight:400;font-style:normal;font-display:swap;
     src:url(assets/fonts/TheYearofHandicrafts-Regular.otf) format('opentype')}
@@ -292,6 +295,21 @@
     width:36px;height:34px;font-size:16px;cursor:pointer;transition:.15s;line-height:1}
   .icon-btn:active{transform:scale(.94)}
   .icon-btn.muted{opacity:.4;filter:grayscale(1)}
+  /* مؤشر حالة الاتصال بالسحابة */
+  .conn-dot{display:inline-flex;align-items:center;gap:5px;background:var(--soft);
+    border:1px solid var(--line);border-radius:14px;padding:5px 10px;font-size:11.5px;
+    font-weight:600;color:var(--muted);white-space:nowrap}
+  .conn-dot::before{content:"";width:8px;height:8px;border-radius:50%;
+    background:var(--muted);flex:none}
+  .conn-dot.online{color:var(--green);background:var(--green-bg);border-color:var(--green-bg)}
+  .conn-dot.online::before{background:var(--green);
+    box-shadow:0 0 0 0 rgba(61,154,99,.6);animation:pulse 2s infinite}
+  .conn-dot.offline{color:var(--red);background:var(--red-bg);border-color:var(--red-bg)}
+  .conn-dot.offline::before{background:var(--red)}
+  .conn-dot.loading{color:var(--gold);background:var(--gold-soft);border-color:var(--gold-soft)}
+  .conn-dot.loading::before{background:var(--gold);animation:blink 1s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(61,154,99,.6)}70%{box-shadow:0 0 0 6px rgba(61,154,99,0)}100%{box-shadow:0 0 0 0 rgba(61,154,99,0)}}
+  @keyframes blink{50%{opacity:.4}}
   /* بانر التنبيه */
   .notif{position:fixed;top:-120px;inset-inline:0;width:420px;margin:0 auto;z-index:70;
     background:var(--gold);color:#fff;border-radius:14px;padding:14px 16px;
@@ -373,6 +391,7 @@
       </div>
       <img src="assets/logo.png" alt="القرعاوي" class="hd-logo hd-logo-center">
       <div class="hd-actions">
+        <span class="conn-dot loading" id="connDot" title="حالة الاتصال بالسحابة">جاري الاتصال…</span>
         <button class="newreq-btn" onclick="openSheet()">+ طلب قطع</button>
         <button class="icon-btn" id="soundBtn" onclick="toggleSound()" title="تنبيه صوتي">🔔</button>
         <button class="logout" onclick="logout()">خروج</button>
@@ -412,7 +431,10 @@
         <div><h1>لوحة الإدارة</h1><div class="bname">نظرة شاملة على كل الفروع</div></div>
       </div>
       <img src="assets/logo.png" alt="القرعاوي" class="hd-logo hd-logo-center">
-      <button class="logout" onclick="mgrLogout()">خروج</button>
+      <div class="hd-actions">
+        <span class="conn-dot loading" id="connDotMgr" title="حالة الاتصال بالسحابة">جاري الاتصال…</span>
+        <button class="logout" onclick="mgrLogout()">خروج</button>
+      </div>
     </div>
     <div class="stats" style="grid-template-columns:repeat(5,1fr)">
       <div class="stat"><b id="m-open">0</b><span>طلبات مفتوحة</span></div>
@@ -548,67 +570,86 @@ const BRANCHES = [
   {id:20, name:"الطائف",                               pin:"1200"},
 ];
 
-// بيانات: طلب = {id, from, to, t, items:[{id,part,name,qty,status,rt}]}
-// rt = طابع زمني للرد (للوحة المدير: حساب سرعة الفرع)
-const STORAGE_KEY="qarawi_reqs_v1";
-const SEQ_KEY="qarawi_seq_v1";
+// ===================== FIREBASE =====================
+const firebaseConfig = {
+  apiKey: "AIzaSyCWyqw92zhtgvaZJdzo84QfdqCGrdDR6Mk",
+  authDomain: "qarawi-parts.firebaseapp.com",
+  projectId: "qarawi-parts",
+  storageBucket: "qarawi-parts.firebasestorage.app",
+  messagingSenderId: "813028198693",
+  appId: "1:813028198693:web:abad865eb7cf174016b2cc",
+  measurementId: "G-7W07FLYD47"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+// تفعيل التخزين المحلي لأوفلاين (يعمل التطبيق حتى بدون إنترنت)
+db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn("Persistence:",e.code));
+
 const H=1000*60*60;
+let REQS = [];
+let firestoreReady = false;
 
-// بيانات تجريبية أولية (تُحمَّل فقط أول مرة، أو عند مسح البيانات)
-const SEED_REQS = [
-  {id:1, from:10, to:11, t:Date.now()-1000*60*18, note:"ضروري اليوم — للعميل أبو فهد", items:[
-    {id:1,part:"90919-01253",name:"بوجيه هايلكس",qty:4,status:"pending"},
-    {id:2,part:"04465-0K340",name:"تيل فرامل أمامي",qty:2,status:"pending"},
-    {id:3,part:"17801-0C010",name:"فلتر هواء",qty:6,status:"pending"},
-  ]},
-  {id:7, from:13, to:11, t:Date.now()-28*H, note:"", items:[
-    {id:12,part:"04152-YZZA1",name:"فلتر زيت محرك",qty:3,status:"pending"},
-    {id:13,part:"90915-10003",name:"فلتر زيت",qty:5,status:"pending"},
-  ]},
-  {id:2, from:7, to:2, t:Date.now()-5*H, items:[
-    {id:4,part:"90915-YZZD4",name:"فلتر زيت",qty:10,status:"ready",rt:Date.now()-5*H+1000*60*12},
-    {id:5,part:"48510-09L25",name:"مساعد أمامي",qty:1,status:"unavailable",rt:Date.now()-5*H+1000*60*12},
-    {id:14,part:"04466-0K090",name:"تيل فرامل خلفي",qty:2,status:"wh2",rt:Date.now()-5*H+1000*60*15},
-  ]},
-  {id:3, from:11, to:4, t:Date.now()-26*H, items:[
-    {id:6,part:"43512-0K080",name:"هوب فرامل",qty:2,status:"done",rt:Date.now()-26*H+1000*60*200},
-  ]},
-  {id:4, from:1, to:11, t:Date.now()-30*H, items:[
-    {id:7,part:"90919-01253",name:"بوجيه هايلكس",qty:8,status:"done",rt:Date.now()-30*H+1000*60*40},
-    {id:8,part:"17801-0C010",name:"فلتر هواء",qty:3,status:"done",rt:Date.now()-30*H+1000*60*40},
-  ]},
-  {id:5, from:5, to:7, t:Date.now()-48*H, items:[
-    {id:9,part:"90915-YZZD4",name:"فلتر زيت",qty:5,status:"done",rt:Date.now()-48*H+1000*60*25},
-    {id:10,part:"90919-01253",name:"بوجيه هايلكس",qty:2,status:"unavailable",rt:Date.now()-48*H+1000*60*25},
-  ]},
-  {id:6, from:2, to:11, t:Date.now()-52*H, items:[
-    {id:11,part:"04465-0K340",name:"تيل فرامل أمامي",qty:4,status:"done",rt:Date.now()-52*H+1000*60*55},
-  ]},
-];
+// مؤشر حالة الاتصال
+function setConn(state, text){
+  ["connDot","connDotMgr"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.className="conn-dot "+state;
+    el.textContent=text;
+  });
+}
+window.addEventListener("online",()=>{ if(firestoreReady) setConn("online","متصل"); });
+window.addEventListener("offline",()=>setConn("offline","غير متصل"));
 
-let REQS, seqR, seqI;
-function loadData(){
-  try{
-    const saved=localStorage.getItem(STORAGE_KEY);
-    if(saved){
-      REQS=JSON.parse(saved);
-      const seq=JSON.parse(localStorage.getItem(SEQ_KEY)||"{}");
-      seqR=seq.r||100; seqI=seq.i||1000;
-      return;
-    }
-  }catch(e){console.warn("فشل تحميل البيانات:",e);}
-  // أول تحميل: استخدم البيانات التجريبية
-  REQS=JSON.parse(JSON.stringify(SEED_REQS));
-  seqR=100; seqI=1000;
-  saveData();
+// تحويل طلب لصيغة Firestore (id كنص للـ document id)
+function reqDocId(r){ return String(r.id); }
+
+// حفظ طلب كامل في Firestore
+async function saveReqToCloud(req){
+  try{ await db.collection("requests").doc(reqDocId(req)).set(req); }
+  catch(e){ console.error("saveReqToCloud:",e); toast("تعذّر الحفظ بالسحابة"); }
 }
-function saveData(){
-  try{
-    localStorage.setItem(STORAGE_KEY,JSON.stringify(REQS));
-    localStorage.setItem(SEQ_KEY,JSON.stringify({r:seqR,i:seqI}));
-  }catch(e){console.warn("فشل حفظ البيانات:",e);}
+// حذف طلب من Firestore
+async function deleteReqFromCloud(reqId){
+  try{ await db.collection("requests").doc(String(reqId)).delete(); }
+  catch(e){ console.error("deleteReqFromCloud:",e); toast("تعذّر الحذف بالسحابة"); }
 }
-loadData();
+// مسح جميع الطلبات
+async function clearAllFromCloud(){
+  const snap = await db.collection("requests").get();
+  const batch = db.batch();
+  snap.forEach(d=>batch.delete(d.ref));
+  await batch.commit();
+}
+
+// دخول مجهول + الاشتراك بالتحديثات المباشرة
+auth.signInAnonymously().catch(e=>{
+  console.error("Auth error:",e);
+  setConn("offline","فشل الدخول");
+  toast("فشل الاتصال بالسحابة: "+e.message);
+});
+
+auth.onAuthStateChanged(user=>{
+  if(!user)return;
+  // اشتراك مباشر: أي تغيير من أي فرع يصل خلال ثوان
+  db.collection("requests").onSnapshot(snap=>{
+    REQS = snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
+    firestoreReady = true;
+    const source = snap.metadata.fromCache ? "cache" : "server";
+    if(navigator.onLine && source==="server") setConn("online","متصل مباشرة");
+    else if(source==="cache") setConn("loading","بيانات محفوظة (أوفلاين)");
+    // أعد الرسم في الواجهة الحالية
+    if(document.getElementById("app") && !document.getElementById("app").classList.contains("hidden")) render();
+    if(document.getElementById("mgr") && !document.getElementById("mgr").classList.contains("hidden")) renderMgr();
+  }, err=>{
+    console.error("Firestore snapshot error:",err);
+    setConn("offline","خطأ في الاتصال");
+  });
+});
+
+// دوال متوافقة مع الكود القديم — الآن ترسل للسحابة
+function saveData(){ /* no-op: الحفظ يتم لكل طلب على حدة */ }
 
 const $=s=>document.querySelector(s);
 let me=null, activeTab="all", pinBuf="";
@@ -793,16 +834,27 @@ function cardHTML(req){
 }
 
 /* إجراءات */
+// معرف فريد للقطع (وقت + عشوائي، آمن بين الفروع)
+function newItemId(){ return Date.now()*1000 + Math.floor(Math.random()*1000); }
+function newReqId(){ return Date.now(); }
+
 function setItem(reqId,itemId,status){
   const r=REQS.find(x=>x.id===reqId);
-  const it=r.items.find(x=>x.id===itemId);
-  if((status==="ready"||status==="unavailable"||status==="wh2")&&!it.rt)it.rt=Date.now();
-  it.status=status;saveData();render();
+  if(!r)return;
+  // نسخة معدَّلة لإرسالها للسحابة
+  const updated={...r, items: r.items.map(it=>{
+    if(it.id!==itemId) return it;
+    const nit={...it, status};
+    if((status==="ready"||status==="unavailable"||status==="wh2")&&!nit.rt) nit.rt=Date.now();
+    return nit;
+  })};
+  saveReqToCloud(updated);
 }
 function receiveAll(reqId){
   const r=REQS.find(x=>x.id===reqId);
-  r.items.forEach(it=>{if(it.status==="ready")it.status="done";});
-  saveData();render();
+  if(!r)return;
+  const updated={...r, items: r.items.map(it=> it.status==="ready" ? {...it, status:"done"} : it)};
+  saveReqToCloud(updated);
 }
 
 /* نموذج الطلب */
@@ -855,45 +907,44 @@ function submitReq(){
   if(editingId){
     // تعديل: نحافظ على حالات القطع الموجودة إن لم تتغيّر أرقامها
     const r=REQS.find(x=>x.id===editingId);
+    if(!r){closeSheet();return;}
     const oldByPart={};
     r.items.forEach(it=>{oldByPart[it.part]=it;});
-    r.items=items.map(it=>{
+    const updated={...r, note, items: items.map(it=>{
       const old=oldByPart[it.part];
       return old
-        ? {...old,name:it.name,qty:it.qty}            // نفس القطعة: نبقي الحالة والرد
-        : {id:++seqI,part:it.part,name:it.name,qty:it.qty,status:"pending"};
-    });
-    r.note=note;
-    saveData();closeSheet();toast("تم حفظ التعديل");render();
+        ? {...old,name:it.name,qty:it.qty}
+        : {id:newItemId(),part:it.part,name:it.name,qty:it.qty,status:"pending"};
+    })};
+    saveReqToCloud(updated);
+    closeSheet();toast("تم حفظ التعديل");
   }else{
-    REQS.unshift({
-      id:++seqR, from:me.id, to:+$("#f-to").value, t:Date.now(), note,
-      items:items.map(it=>({id:++seqI,part:it.part,name:it.name,qty:it.qty,status:"pending"}))
-    });
-    saveData();closeSheet();activeTab="mine";toast(`تم رفع الطلب (${items.length} قطع)`);render();
+    const req={
+      id:newReqId(), from:me.id, to:+$("#f-to").value, t:Date.now(), note,
+      items:items.map(it=>({id:newItemId(),part:it.part,name:it.name,qty:it.qty,status:"pending"}))
+    };
+    saveReqToCloud(req);
+    closeSheet();activeTab="mine";toast(`تم رفع الطلب (${items.length} قطع)`);
   }
 }
 function deleteReq(reqId){
   const r=REQS.find(x=>x.id===reqId);
   if(!r)return;
   if(!confirm("هل تريد حذف هذا الطلب نهائياً؟ لا يمكن التراجع."))return;
-  REQS=REQS.filter(x=>x.id!==reqId);
-  saveData();
+  deleteReqFromCloud(reqId);
   toast("تم حذف الطلب");
-  // تحديث الواجهة المعروضة حالياً
-  if(!$("#mgr").classList.contains("hidden"))renderMgr();
-  else render();
 }
 // مسح جميع البيانات (زر في لوحة المدير)
-function clearAllData(){
-  if(!confirm("سيتم حذف جميع الطلبات نهائياً. هل أنت متأكد؟"))return;
+async function clearAllData(){
+  if(!confirm("سيتم حذف جميع الطلبات من السحابة نهائياً — من كل الفروع. هل أنت متأكد؟"))return;
   if(!confirm("تأكيد نهائي: لا يمكن التراجع عن هذه العملية."))return;
-  localStorage.removeItem(STORAGE_KEY);
-  localStorage.removeItem(SEQ_KEY);
-  REQS=[]; seqR=100; seqI=1000;
-  saveData();
-  toast("تم مسح جميع الطلبات");
-  renderMgr();
+  try{
+    await clearAllFromCloud();
+    toast("تم مسح جميع الطلبات");
+  }catch(e){
+    console.error(e);
+    toast("فشل المسح: "+e.message);
+  }
 }
 $("#overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeSheet();});
 
@@ -1194,14 +1245,7 @@ document.addEventListener("keydown",e=>{
   else if(e.key==="Escape"){ loginVisible?pinClear():mPinClear(); }
 });
 
-// مزامنة بين تبويبات المتصفح: أي تحديث في تبويب آخر يظهر هنا فوراً
-window.addEventListener("storage",e=>{
-  if(e.key===STORAGE_KEY||e.key===SEQ_KEY){
-    loadData();
-    if(!$("#mgr").classList.contains("hidden"))renderMgr();
-    else if(!$("#app").classList.contains("hidden"))render();
-  }
-});
+// المزامنة بين الأجهزة والتبويبات تتم تلقائياً عبر Firestore onSnapshot
 
 boot();
 </script>
