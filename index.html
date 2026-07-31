@@ -679,12 +679,13 @@ async function clearAllFromCloud(){
 }
 
 // بدء الاستماع المباشر لتغييرات الطلبات (مرة واحدة بعد تسجيل الدخول)
-let listenerAttached=false;
+let listenerAttached=false, snapRetries=0, unsubSnap=null;
 function startListener(){
   if(listenerAttached)return;
   listenerAttached=true;
   const cutoff = Date.now() - READ_WINDOW_DAYS*86400000;
-  db.collection("requests").where("t",">=",cutoff).onSnapshot(snap=>{
+  unsubSnap = db.collection("requests").where("t",">=",cutoff).onSnapshot(snap=>{
+    snapRetries=0;  // نجح — صفّر عدّاد إعادة المحاولة
     REQS = snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
     firestoreReady = true;
     const source = snap.metadata.fromCache ? "cache" : "server";
@@ -694,23 +695,34 @@ function startListener(){
     if(document.getElementById("mgr") && !document.getElementById("mgr").classList.contains("hidden")) renderMgr();
   }, err=>{
     console.error("Firestore snapshot error:",err);
-    setConn("offline","خطأ في الاتصال");
+    // خطأ onSnapshot نهائي — أعِد الربط بعد لحظة (يعالج سباق توقيت المصادقة)
+    listenerAttached=false;
+    if(snapRetries<8){
+      snapRetries++;
+      setConn("loading","جارٍ الاتصال…");
+      setTimeout(()=>{ if(firebase.auth().currentUser) startListener(); }, 1500);
+    }else{
+      setConn("offline","خطأ في الاتصال");
+    }
   });
 }
 
 // التحقق من الدخول عبر خوادم جوجل + استعادة الجلسة تلقائياً عند إعادة التحميل
-auth.onAuthStateChanged(user=>{
+auth.onAuthStateChanged(async user=>{
   if(!user){
     // مسجّل خروج — اعرض شاشة الدخول
     ["app","mgr","fab","mgrLogin"].forEach(id=>{
       const el=document.getElementById(id); if(el) el.classList.add("hidden");
     });
     const lg=document.getElementById("login"); if(lg) lg.classList.remove("hidden");
-    me=null; pinBuf=""; mPinBuf="";
+    me=null; pinBuf=""; mPinBuf=""; listenerAttached=false; snapRetries=0;
+    if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; }
     if(typeof renderPinDots==="function") renderPinDots();
     if(typeof mRenderDots==="function") mRenderDots();
     return;
   }
+  // تأكد من جاهزية رمز الدخول قبل ربط المستمع (يمنع سباق التوقيت)
+  try{ await user.getIdToken(); }catch(e){}
   startListener();
   const email=(user.email||"").toLowerCase();
   if(email==="admin@qrawi.app"){
