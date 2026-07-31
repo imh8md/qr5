@@ -547,27 +547,28 @@
 
 <script>
 /* ===== نسخة محلية للتجربة (بدون قاعدة بيانات) ===== */
+// الأرقام (PIN) لم تعد في الكود — الدخول يتم عبر Firebase Authentication
 const BRANCHES = [
-  {id:1,  name:"بريدة – المستودع الإقليمي",            pin:"1010"},
-  {id:2,  name:"بريدة – الشارع التجاري",               pin:"1020"},
-  {id:3,  name:"بريدة – طريق الملك عبدالعزيز (الخبيب)", pin:"1030"},
-  {id:4,  name:"بريدة – صناعية السليم 1",              pin:"1040"},
-  {id:5,  name:"الزلفي – مدخل الصناعية",               pin:"1050"},
-  {id:6,  name:"الرس – مقابل شركة الكهرباء",           pin:"1060"},
-  {id:7,  name:"عنيزة – الصناعية",                     pin:"1070"},
-  {id:8,  name:"بريدة – صناعية السليم 2",              pin:"1080"},
-  {id:9,  name:"حفر الباطن – الصناعية",                pin:"1090"},
-  {id:10, name:"بريدة – صناعية الرواف",                pin:"1100"},
-  {id:11, name:"بريدة – المركز الرئيسي",               pin:"1110"},
-  {id:12, name:"حائل – صناعية الجربوع",                pin:"1120"},
-  {id:13, name:"المدينة – العزيزية طريق الجامعات",     pin:"1130"},
-  {id:14, name:"جدة – كيلو 14 مجمع الورش",             pin:"1140"},
-  {id:15, name:"جدة – قويزة",                          pin:"1150"},
-  {id:16, name:"المجمعة",                              pin:"1160"},
-  {id:17, name:"المدينة – عروة",                       pin:"1170"},
-  {id:18, name:"مكة – صناعية الدواس القديمة",          pin:"1180"},
-  {id:19, name:"الجوف – سكاكا",                        pin:"1190"},
-  {id:20, name:"الطائف",                               pin:"1200"},
+  {id:1,  name:"بريدة – المستودع الإقليمي"},
+  {id:2,  name:"بريدة – الشارع التجاري"},
+  {id:3,  name:"بريدة – طريق الملك عبدالعزيز (الخبيب)"},
+  {id:4,  name:"بريدة – صناعية السليم 1"},
+  {id:5,  name:"الزلفي – مدخل الصناعية"},
+  {id:6,  name:"الرس – مقابل شركة الكهرباء"},
+  {id:7,  name:"عنيزة – الصناعية"},
+  {id:8,  name:"بريدة – صناعية السليم 2"},
+  {id:9,  name:"حفر الباطن – الصناعية"},
+  {id:10, name:"بريدة – صناعية الرواف"},
+  {id:11, name:"بريدة – المركز الرئيسي"},
+  {id:12, name:"حائل – صناعية الجربوع"},
+  {id:13, name:"المدينة – العزيزية طريق الجامعات"},
+  {id:14, name:"جدة – كيلو 14 مجمع الورش"},
+  {id:15, name:"جدة – قويزة"},
+  {id:16, name:"المجمعة"},
+  {id:17, name:"المدينة – عروة"},
+  {id:18, name:"مكة – صناعية الدواس القديمة"},
+  {id:19, name:"الجوف – سكاكا"},
+  {id:20, name:"الطائف"},
 ];
 
 // ===================== FIREBASE =====================
@@ -623,29 +624,49 @@ async function clearAllFromCloud(){
   await batch.commit();
 }
 
-// دخول مجهول + الاشتراك بالتحديثات المباشرة
-auth.signInAnonymously().catch(e=>{
-  console.error("Auth error:",e);
-  setConn("offline","فشل الدخول");
-  toast("فشل الاتصال بالسحابة: "+e.message);
-});
-
-auth.onAuthStateChanged(user=>{
-  if(!user)return;
-  // اشتراك مباشر: أي تغيير من أي فرع يصل خلال ثوان
+// بدء الاستماع المباشر لتغييرات الطلبات (مرة واحدة بعد تسجيل الدخول)
+let listenerAttached=false;
+function startListener(){
+  if(listenerAttached)return;
+  listenerAttached=true;
   db.collection("requests").onSnapshot(snap=>{
     REQS = snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
     firestoreReady = true;
     const source = snap.metadata.fromCache ? "cache" : "server";
     if(navigator.onLine && source==="server") setConn("online","متصل مباشرة");
     else if(source==="cache") setConn("loading","بيانات محفوظة (أوفلاين)");
-    // أعد الرسم في الواجهة الحالية
     if(document.getElementById("app") && !document.getElementById("app").classList.contains("hidden")) render();
     if(document.getElementById("mgr") && !document.getElementById("mgr").classList.contains("hidden")) renderMgr();
   }, err=>{
     console.error("Firestore snapshot error:",err);
     setConn("offline","خطأ في الاتصال");
   });
+}
+
+// التحقق من الدخول عبر خوادم جوجل + استعادة الجلسة تلقائياً عند إعادة التحميل
+auth.onAuthStateChanged(user=>{
+  if(!user){
+    // مسجّل خروج — اعرض شاشة الدخول
+    ["app","mgr","fab","mgrLogin"].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.classList.add("hidden");
+    });
+    const lg=document.getElementById("login"); if(lg) lg.classList.remove("hidden");
+    me=null; pinBuf=""; mPinBuf="";
+    if(typeof renderPinDots==="function") renderPinDots();
+    if(typeof mRenderDots==="function") mRenderDots();
+    return;
+  }
+  startListener();
+  const email=(user.email||"").toLowerCase();
+  if(email==="admin@qrawi.app"){
+    enterMgr();
+  }else{
+    const m=email.match(/^b(\d+)@qrawi\.app$/);
+    if(m){
+      const b=BRANCHES.find(x=>x.id===parseInt(m[1],10));
+      if(b) enter(b);
+    }
+  }
 });
 
 // دوال متوافقة مع الكود القديم — الآن ترسل للسحابة
@@ -670,23 +691,33 @@ const PILL={pending:{t:"بانتظار الرد",c:"p-pending"},ready:{t:"متو
 function boot(){
   $("#loginBranch").innerHTML=BRANCHES.map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
   renderPinDots();
-  const saved=localStorage.getItem("branchId");
-  if(saved){const b=BRANCHES.find(x=>x.id==saved);if(b)enter(b);}
+  // لا دخول تلقائي هنا — onAuthStateChanged يستعيد الجلسة إن وُجدت
 }
 function renderPinDots(){
-  $("#pinDots").innerHTML=[0,1,2,3].map(i=>`<div class="pin-dot ${i<pinBuf.length?'filled':''}"></div>`).join("");
+  $("#pinDots").innerHTML=[0,1,2,3,4,5].map(i=>`<div class="pin-dot ${i<pinBuf.length?'filled':''}"></div>`).join("");
 }
-function pinPress(d){if(pinBuf.length>=4)return;pinBuf+=d;renderPinDots();
-  $("#loginErr").textContent="";if(pinBuf.length===4)tryLogin();}function pinBack(){pinBuf=pinBuf.slice(0,-1);renderPinDots();}
+function pinPress(d){if(pinBuf.length>=6)return;pinBuf+=d;renderPinDots();
+  $("#loginErr").textContent="";if(pinBuf.length===6)tryLogin();}function pinBack(){pinBuf=pinBuf.slice(0,-1);renderPinDots();}
 function pinClear(){pinBuf="";renderPinDots();}
-function tryLogin(){
+async function tryLogin(){
   const b=BRANCHES.find(x=>x.id===+$("#loginBranch").value);
-  if(b&&b.pin===pinBuf){localStorage.setItem("branchId",b.id);enter(b);}
-  else{$("#loginErr").textContent="رمز الدخول غير صحيح";pinBuf="";renderPinDots();}
+  if(!b){$("#loginErr").textContent="اختر الفرع أولاً";pinBuf="";renderPinDots();return;}
+  const email="b"+String(b.id).padStart(2,"0")+"@qrawi.app";
+  $("#loginErr").textContent="جارٍ التحقق…";
+  try{
+    await auth.signInWithEmailAndPassword(email, pinBuf);
+    $("#loginErr").textContent="";  // onAuthStateChanged يتكفّل بالدخول
+  }catch(e){
+    $("#loginErr").textContent = e.code==="auth/too-many-requests"
+      ? "محاولات كثيرة، انتظر دقيقة" : "رمز الدخول غير صحيح";
+    pinBuf=""; renderPinDots();
+  }
 }
 function enter(b){
   me={id:b.id,name:b.name};
   $("#login").classList.add("hidden");
+  $("#mgr").classList.add("hidden");
+  $("#mgrLogin").classList.add("hidden");
   $("#app").classList.remove("hidden");
   $("#fab").classList.remove("hidden");
   $("#hdBranch").textContent=b.name;
@@ -694,9 +725,7 @@ function enter(b){
   refreshSoundBtn();
   render();
 }
-function logout(){localStorage.removeItem("branchId");me=null;pinBuf="";
-  $("#app").classList.add("hidden");$("#fab").classList.add("hidden");
-  $("#login").classList.remove("hidden");renderPinDots();$("#loginErr").textContent="";}
+function logout(){ auth.signOut(); }  // onAuthStateChanged يعيد عرض شاشة الدخول
 
 /* حالة الطلب */
 function reqState(r){
@@ -949,39 +978,38 @@ async function clearAllData(){
 $("#overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeSheet();});
 
 /* ===================== لوحة المدير ===================== */
-const MGR_PIN="9999";
 let mPinBuf="";
 function openMgrLogin(){$("#login").classList.add("hidden");$("#mgrLogin").classList.remove("hidden");
   mPinBuf="";mRenderDots();$("#mLoginErr").textContent="";}
 function closeMgrLogin(){$("#mgrLogin").classList.add("hidden");$("#login").classList.remove("hidden");}
-function mRenderDots(){$("#mPinDots").innerHTML=[0,1,2,3].map(i=>
+function mRenderDots(){$("#mPinDots").innerHTML=[0,1,2,3,4,5].map(i=>
   `<div class="pin-dot ${i<mPinBuf.length?'filled':''}"></div>`).join("");}
-function mPinPress(d){if(mPinBuf.length>=4)return;mPinBuf+=d;mRenderDots();
-  $("#mLoginErr").textContent="";if(mPinBuf.length===4)mTryLogin();}
+function mPinPress(d){if(mPinBuf.length>=6)return;mPinBuf+=d;mRenderDots();
+  $("#mLoginErr").textContent="";if(mPinBuf.length===6)mTryLogin();}
 function mPinBack(){mPinBuf=mPinBuf.slice(0,-1);mRenderDots();}
 function mPinClear(){mPinBuf="";mRenderDots();}
-function mTryLogin(){
-  if(mPinBuf===MGR_PIN)enterMgr();
-  else{$("#mLoginErr").textContent="رمز الإدارة غير صحيح";mPinBuf="";mRenderDots();}
+async function mTryLogin(){
+  $("#mLoginErr").textContent="جارٍ التحقق…";
+  try{
+    await auth.signInWithEmailAndPassword("admin@qrawi.app", mPinBuf);
+    $("#mLoginErr").textContent="";  // onAuthStateChanged يفتح لوحة الإدارة
+  }catch(e){
+    $("#mLoginErr").textContent = e.code==="auth/too-many-requests"
+      ? "محاولات كثيرة، انتظر دقيقة" : "رمز الإدارة غير صحيح";
+    mPinBuf=""; mRenderDots();
+  }
 }
 function enterMgr(){
+  $("#login").classList.add("hidden");
   $("#mgrLogin").classList.add("hidden");
+  $("#app").classList.add("hidden");
+  $("#fab").classList.add("hidden");
   $("#mgr").classList.remove("hidden");
-  // تعبئة فلتر الفروع
   $("#flt-branch").innerHTML=`<option value="all">كل الفروع</option>`+
     BRANCHES.map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
   renderMgr();
 }
-function mgrLogout(){
-  try{
-    $("#mgr").classList.add("hidden");
-    $("#mgrLogin").classList.add("hidden");
-    $("#app").classList.add("hidden");
-    $("#fab").classList.add("hidden");
-    mPinBuf="";mRenderDots();$("#mLoginErr").textContent="";
-  }catch(e){}
-  $("#login").classList.remove("hidden");
-}
+function mgrLogout(){ auth.signOut(); }  // onAuthStateChanged يعيد شاشة الدخول
 
 function fmtDur(ms){
   const m=Math.round(ms/60000);
