@@ -32,6 +32,7 @@ function val(v){
   if ("mapValue" in v){ const o={}, f=v.mapValue.fields||{}; for (const k in f) o[k]=val(f[k]); return o; }
   return null;
 }
+function fmtAmount(n){ return (Number(n)||0).toLocaleString("en-US",{maximumFractionDigits:2}); }
 async function anonToken(){
   const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`,{
     method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({returnSecureToken:true})
@@ -90,5 +91,68 @@ async function runQuery(token, structuredQuery){
       body: JSON.stringify({ fields:{ notified:{ booleanValue:true } } })
     });
   }
-  console.log(`done. new requests: ${reqs}, notifications sent: ${sent}`);
+  // ===== الحوالات: 1) حوالة جديدة → إشعار المحاسب (subs branchId==0) =====
+  const newTx = await runQuery(token,{
+    from:[{collectionId:"transfers"}],
+    where:{fieldFilter:{field:{fieldPath:"notified"},op:"EQUAL",value:{booleanValue:false}}},
+    limit:50
+  });
+  for (const row of (newTx||[])){
+    if (!row.document) continue;
+    const docName=row.document.name, f=row.document.fields||{};
+    const from=val(f.branchId), amount=val(f.amount);
+    const subs=await runQuery(token,{
+      from:[{collectionId:"subs"}],
+      where:{fieldFilter:{field:{fieldPath:"branchId"},op:"EQUAL",value:{integerValue:"0"}}},
+      limit:25
+    });
+    const payload=JSON.stringify({
+      title:"حوالة بنكية جديدة",
+      body:`من ${NAMES[from]||("فرع "+from)} · ${fmtAmount(amount)} ريال — بانتظار التأكيد`,
+      url:"https://www.qrawi.com/", tag:"tx-"+docName.split("/").pop()
+    });
+    for (const s of (subs||[])){
+      if (!s.document) continue;
+      const sub=val(s.document.fields.subscription); if (!sub||!sub.endpoint) continue;
+      try { await webpush.sendNotification(sub,payload); sent++; }
+      catch(e){ if (e.statusCode===404||e.statusCode===410) await fetch(`https://firestore.googleapis.com/v1/${s.document.name}`,{method:"DELETE",headers:{"Authorization":`Bearer ${token}`}}); }
+    }
+    await fetch(`https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=notified`,{
+      method:"PATCH", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},
+      body: JSON.stringify({fields:{notified:{booleanValue:true}}})
+    });
+  }
+  // ===== 2) حوالة تم البتّ فيها → إشعار الفرع (subs branchId==transfer.branchId) =====
+  const decidedTx = await runQuery(token,{
+    from:[{collectionId:"transfers"}],
+    where:{fieldFilter:{field:{fieldPath:"notifiedBranch"},op:"EQUAL",value:{booleanValue:false}}},
+    limit:50
+  });
+  for (const row of (decidedTx||[])){
+    if (!row.document) continue;
+    const docName=row.document.name, f=row.document.fields||{};
+    const branchId=val(f.branchId), amount=val(f.amount), status=val(f.status);
+    const subs=await runQuery(token,{
+      from:[{collectionId:"subs"}],
+      where:{fieldFilter:{field:{fieldPath:"branchId"},op:"EQUAL",value:{integerValue:String(branchId)}}},
+      limit:25
+    });
+    const word = status==="confirmed" ? "تم تأكيد" : "تم رفض";
+    const payload=JSON.stringify({
+      title:`${word} حوالتك`,
+      body:`${fmtAmount(amount)} ريال — ${status==="confirmed"?"مؤكدة ✓":"مرفوضة"}`,
+      url:"https://www.qrawi.com/", tag:"txd-"+docName.split("/").pop()
+    });
+    for (const s of (subs||[])){
+      if (!s.document) continue;
+      const sub=val(s.document.fields.subscription); if (!sub||!sub.endpoint) continue;
+      try { await webpush.sendNotification(sub,payload); sent++; }
+      catch(e){ if (e.statusCode===404||e.statusCode===410) await fetch(`https://firestore.googleapis.com/v1/${s.document.name}`,{method:"DELETE",headers:{"Authorization":`Bearer ${token}`}}); }
+    }
+    await fetch(`https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=notifiedBranch`,{
+      method:"PATCH", headers:{"Authorization":`Bearer ${token}`,"Content-Type":"application/json"},
+      body: JSON.stringify({fields:{notifiedBranch:{booleanValue:true}}})
+    });
+  }
+  console.log(`done. requests: ${reqs}, transfers new: ${(newTx||[]).filter(r=>r.document).length}, decided: ${(decidedTx||[]).filter(r=>r.document).length}, notifications sent: ${sent}`);
 })().catch(e=>{ console.error(e); process.exit(1); });

@@ -329,6 +329,51 @@
   .notif-body span{font-size:12.5px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .notif-x{background:rgba(255,255,255,.25);border:none;color:#fff;border-radius:8px;
     width:30px;height:30px;font-size:20px;cursor:pointer;flex:none;line-height:1}
+
+  /* ===== الحوالات ===== */
+  .mode-toggle{display:flex;gap:8px;padding:14px 24px 0;max-width:420px}
+  .mode-btn{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    padding:10px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:.15s}
+  .mode-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
+  .tx-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 24px 0}
+  .tx-hint{font-size:12px;color:var(--muted)}
+  .tx-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.03);position:relative}
+  .tx-card.pending{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-soft)}
+  .tx-top{padding:13px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .tx-amount{font-size:22px;font-weight:900;color:var(--txt);line-height:1}
+  .tx-amount small{font-size:12px;font-weight:700;color:var(--muted)}
+  .tx-branch{font-size:12.5px;color:var(--gold);font-weight:700;margin-top:3px}
+  .tx-meta{display:flex;flex-direction:column;gap:4px;padding:0 15px 12px;font-size:13px;color:var(--txt)}
+  .tx-meta .row{display:flex;gap:6px}
+  .tx-meta .k{color:var(--muted);min-width:78px}
+  .tx-status{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:9px;white-space:nowrap;flex:none}
+  .tx-pending{background:var(--blue-bg);color:var(--blue)}
+  .tx-confirmed{background:var(--green-bg);color:var(--green)}
+  .tx-rejected{background:var(--red-bg);color:var(--red)}
+  .tx-receipt-btn{background:var(--soft);border:1px solid var(--line);color:var(--gold);
+    border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;margin:0 15px 12px}
+  .tx-foot{padding:10px 15px;background:var(--soft);display:flex;gap:8px;justify-content:flex-end}
+  .tx-foot .ia{border:none;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer}
+  .tx-confirm-btn{background:var(--green);color:#fff}
+  .tx-reject-btn{background:var(--red-bg);color:var(--red);border:1px solid var(--line)}
+  .tx-del{position:absolute;top:10px;inset-inline-start:10px;background:var(--soft);
+    border:1px solid var(--line);border-radius:8px;width:28px;height:28px;font-size:12px;
+    cursor:pointer;opacity:.5;display:flex;align-items:center;justify-content:center;padding:0}
+  .tx-del:hover{opacity:1;background:var(--red-bg);border-color:var(--red)}
+  .tx-note{margin:0 15px 12px;font-size:12px;color:var(--txt);background:var(--soft);
+    border:1px solid var(--line);border-radius:9px;padding:7px 10px}
+  .tx-reject-reason{margin:0 15px 12px;font-size:12px;color:var(--red);
+    background:var(--red-bg);border-radius:9px;padding:7px 10px}
+  .form-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:480px){.form-2col{grid-template-columns:1fr}}
+  .photo-btn{width:100%;background:var(--soft);border:1px dashed var(--line);color:var(--gold);
+    border-radius:11px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+  .photo-preview{margin-top:10px}
+  .photo-preview img{max-width:100%;max-height:200px;border-radius:10px;border:1px solid var(--line)}
+  .img-viewer-inner{background:var(--panel);border-radius:14px;padding:12px;max-width:92vw;max-height:90vh;overflow:auto}
+  .img-viewer-inner img{max-width:100%;max-height:82vh;border-radius:8px;display:block;margin:0 auto}
 </style>
 </head>
 <body>
@@ -359,13 +404,14 @@
     <div class="login-err" id="loginErr"></div>
   </div>
   <button class="mgr-link" onclick="openMgrLogin()">دخول الإدارة ←</button>
+  <button class="mgr-link" onclick="openAccLogin()">دخول المحاسب (الحوالات) ←</button>
 </div>
 
 <!-- شاشة دخول المدير -->
 <div id="mgrLogin" class="hidden">
   <img src="assets/logo.png" alt="القرعاوي" class="brand-logo">
-  <div class="logo"><span class="dot"></span><h1>لوحة الإدارة</h1></div>
-  <div class="sub">أدخل رمز الإدارة</div>
+  <div class="logo"><span class="dot"></span><h1 id="mgrLoginTitle">لوحة الإدارة</h1></div>
+  <div class="sub" id="mgrLoginSub">أدخل رمز الإدارة</div>
   <div class="login-card">
     <div class="pin-display" id="mPinDots"></div>
     <div class="pad">
@@ -398,7 +444,7 @@
       <img src="assets/logo.png" alt="القرعاوي" class="hd-logo hd-logo-center">
       <div class="hd-actions">
         <span class="conn-dot loading" id="connDot" title="حالة الاتصال بالسحابة">جاري الاتصال…</span>
-        <button class="newreq-btn" onclick="openSheet()">+ طلب قطع</button>
+        <button class="newreq-btn" id="hdNewReq" onclick="openSheet()">+ طلب قطع</button>
         <button class="icon-btn" id="notifBtn" onclick="enableNotifications()" title="فعّل إشعارات الجوال">🔕</button>
         <button class="icon-btn" id="soundBtn" onclick="toggleSound()" title="تنبيه صوتي">🔔</button>
         <button class="logout" onclick="logout()">خروج</button>
@@ -411,11 +457,24 @@
       <div class="stat"><b id="s-done">0</b><span>منتهية</span></div>
     </div>
   </header>
-  <div class="tabs" id="tabs"></div>
-  <div class="search-bar">
-    <input id="searchBox" placeholder="🔍 بحث برقم القطعة أو الاسم…" oninput="render()">
+  <div class="mode-toggle">
+    <button class="mode-btn active" id="mode-parts" onclick="setBranchMode('parts')">🔧 قطع الغيار</button>
+    <button class="mode-btn" id="mode-tx" onclick="setBranchMode('transfers')">💳 الحوالات</button>
   </div>
-  <div class="list" id="list"></div>
+  <div id="partsView">
+    <div class="tabs" id="tabs"></div>
+    <div class="search-bar">
+      <input id="searchBox" placeholder="🔍 بحث برقم القطعة أو الاسم…" oninput="render()">
+    </div>
+    <div class="list" id="list"></div>
+  </div>
+  <div id="txView" class="hidden">
+    <div class="tx-bar">
+      <button class="newreq-btn" onclick="openTxForm()">➕ حوالة جديدة</button>
+      <span class="tx-hint">ارفع الحوالة هنا بدل الاتصال — المحاسب يؤكّدها ويصلك الرد.</span>
+    </div>
+    <div class="list" id="txList"></div>
+  </div>
 </div>
 
 <button class="fab hidden" id="fab" onclick="openSheet()">+ طلب قطع</button>
@@ -525,6 +584,83 @@
   </div>
 </div>
 
+<!-- ===== لوحة المحاسب (الحوالات) ===== -->
+<div class="wrap hidden" id="acc">
+  <header>
+    <div class="hd-top">
+      <div class="brand"><span class="dot"></span>
+        <div><h1>لوحة المحاسب</h1><div class="bname">تأكيد الحوالات البنكية</div></div>
+      </div>
+      <img src="assets/logo.png" alt="القرعاوي" class="hd-logo hd-logo-center">
+      <div class="hd-actions">
+        <span class="conn-dot loading" id="connDotAcc" title="حالة الاتصال">جارٍ الاتصال…</span>
+        <button class="icon-btn" id="notifBtnAcc" onclick="enableNotifications()" title="فعّل إشعارات الجوال">🔕</button>
+        <button class="logout" onclick="accLogout()">خروج</button>
+      </div>
+    </div>
+    <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat mine"><b id="a-pending">0</b><span>بانتظار التأكيد</span></div>
+      <div class="stat"><b id="a-today">0</b><span>مؤكدة اليوم</span></div>
+      <div class="stat"><b id="a-amount">0</b><span>مجموع المعلّق (ريال)</span></div>
+      <div class="stat"><b id="a-total">0</b><span>إجمالي الحوالات</span></div>
+    </div>
+  </header>
+  <div class="tabs" id="accTabs"></div>
+  <div class="list" id="accList"></div>
+</div>
+
+<!-- نموذج حوالة جديدة -->
+<div class="overlay" id="txOverlay">
+  <div class="sheet">
+    <h2>حوالة جديدة</h2>
+    <div class="form-2col">
+      <div class="field">
+        <label>المبلغ (ريال) *</label>
+        <input id="tx-amount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+      </div>
+      <div class="field">
+        <label>البنك المحوَّل إليه</label>
+        <select id="tx-bank"></select>
+      </div>
+    </div>
+    <div class="form-2col">
+      <div class="field">
+        <label>رقم العملية / المرجع</label>
+        <input id="tx-ref" placeholder="رقم العملية بالإيصال" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>رقم الفاتورة (اختياري)</label>
+        <input id="tx-invoice" placeholder="رقم الفاتورة" autocomplete="off">
+      </div>
+    </div>
+    <div class="field">
+      <label>اسم المحوِّل / العميل (اختياري)</label>
+      <input id="tx-sender" placeholder="اسم من قام بالتحويل" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>صورة إيصال التحويل</label>
+      <input id="tx-photo" type="file" accept="image/*" capture="environment" onchange="onTxPhoto(event)" style="display:none">
+      <button type="button" class="photo-btn" onclick="document.getElementById('tx-photo').click()">📷 التقاط / اختيار صورة</button>
+      <div id="tx-photo-preview" class="photo-preview"></div>
+    </div>
+    <div class="field">
+      <label>ملاحظة (اختياري)</label>
+      <input id="tx-note" placeholder="مثال: سداد فاتورة العميل أبو فهد">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-cancel" onclick="closeTxForm()">إلغاء</button>
+      <button class="btn btn-send" id="txSubmit" onclick="submitTransfer()">رفع الحوالة</button>
+    </div>
+  </div>
+</div>
+
+<!-- عارض صورة الإيصال -->
+<div class="overlay" id="imgViewer" onclick="closeImgViewer()">
+  <div class="img-viewer-inner">
+    <div id="imgViewerBody" style="text-align:center">جارٍ التحميل…</div>
+  </div>
+</div>
+
 <!-- نموذج الطلب -->
 <div class="overlay" id="overlay">
   <div class="sheet">
@@ -602,7 +738,7 @@ let firestoreReady = false;
 
 // مؤشر حالة الاتصال
 function setConn(state, text){
-  ["connDot","connDotMgr"].forEach(id=>{
+  ["connDot","connDotMgr","connDotAcc"].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
     el.className="conn-dot "+state;
@@ -614,6 +750,7 @@ window.addEventListener("offline",()=>setConn("offline","غير متصل"));
 
 /* ===================== إشعارات الجوال (Web Push) ===================== */
 const VAPID_PUBLIC="BKBvoud5igKzASsCvZiEGWDoaGuolAO8U67975sJIMzAYbR0SexpoHVpsEd79Hl2sZmhV3hci7L6A53I6Nd6tTA";
+let currentSubId=null;  // معرّف الاشتراك بالإشعارات (رقم الفرع، أو 0 للمحاسب)
 function urlB64ToUint8(base64){
   const pad="=".repeat((4-base64.length%4)%4);
   const b64=(base64+pad).replace(/-/g,"+").replace(/_/g,"/");
@@ -629,7 +766,7 @@ async function ensureSW(){
   catch(e){ console.warn("SW register:",e); return null; }
 }
 async function subscribePush(){
-  if(!me) return;
+  if(currentSubId===null) return;
   if(!("Notification" in window)||Notification.permission!=="granted") return;
   const reg=await ensureSW(); if(!reg||!("PushManager" in window)) return;
   try{
@@ -637,7 +774,7 @@ async function subscribePush(){
     if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:urlB64ToUint8(VAPID_PUBLIC)});
     const j=sub.toJSON();
     const key="s_"+(j.endpoint||"").replace(/[^a-zA-Z0-9]/g,"").slice(-40);
-    await db.collection("subs").doc(key).set({branchId:me.id, subscription:j, endpoint:j.endpoint, updatedAt:Date.now()});
+    await db.collection("subs").doc(key).set({branchId:currentSubId, subscription:j, endpoint:j.endpoint, updatedAt:Date.now()});
   }catch(e){ console.warn("subscribePush:",e); }
 }
 async function enableNotifications(){
@@ -650,11 +787,13 @@ async function enableNotifications(){
   refreshNotifBtn();
 }
 function refreshNotifBtn(){
-  const b=document.getElementById("notifBtn"); if(!b) return;
   const on=("Notification" in window)&&Notification.permission==="granted";
-  b.textContent=on?"📲":"🔕";
-  b.title=on?"إشعارات الجوال مفعّلة":"فعّل إشعارات الجوال";
-  b.classList.toggle("muted",!on);
+  ["notifBtn","notifBtnAcc"].forEach(id=>{
+    const b=document.getElementById(id); if(!b) return;
+    b.textContent=on?"📲":"🔕";
+    b.title=on?"إشعارات الجوال مفعّلة":"فعّل إشعارات الجوال";
+    b.classList.toggle("muted",!on);
+  });
 }
 
 // تحويل طلب لصيغة Firestore (id كنص للـ document id)
@@ -711,26 +850,29 @@ function startListener(){
 auth.onAuthStateChanged(async user=>{
   if(!user){
     // مسجّل خروج — اعرض شاشة الدخول
-    ["app","mgr","fab","mgrLogin"].forEach(id=>{
+    ["app","mgr","acc","fab","mgrLogin"].forEach(id=>{
       const el=document.getElementById(id); if(el) el.classList.add("hidden");
     });
     const lg=document.getElementById("login"); if(lg) lg.classList.remove("hidden");
-    me=null; pinBuf=""; mPinBuf=""; listenerAttached=false; snapRetries=0;
-    if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; }
+    me=null; currentSubId=null; pinBuf=""; mPinBuf="";
+    listenerAttached=false; snapRetries=0; if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; }
+    txAttached=false; txRetries=0; if(txUnsub){ try{txUnsub();}catch(e){} txUnsub=null; } TRANSFERS=[];
     if(typeof renderPinDots==="function") renderPinDots();
     if(typeof mRenderDots==="function") mRenderDots();
     return;
   }
   // تأكد من جاهزية رمز الدخول قبل ربط المستمع (يمنع سباق التوقيت)
   try{ await user.getIdToken(); }catch(e){}
-  startListener();
   const email=(user.email||"").toLowerCase();
   if(email==="admin@qrawi.app"){
-    enterMgr();
+    startListener(); enterMgr();
+  }else if(email==="accountant@qrawi.app"){
+    startTxListener(); enterAccountant();
   }else{
     const m=email.match(/^b(\d+)@qrawi\.app$/);
     if(m){
       const b=BRANCHES.find(x=>x.id===parseInt(m[1],10));
+      startListener(); startTxListener();
       if(b) enter(b);
     }
   }
@@ -782,9 +924,11 @@ async function tryLogin(){
 }
 function enter(b){
   me={id:b.id,name:b.name};
+  currentSubId=b.id;
   $("#login").classList.add("hidden");
   $("#mgr").classList.add("hidden");
   $("#mgrLogin").classList.add("hidden");
+  $("#acc").classList.add("hidden");
   $("#app").classList.remove("hidden");
   $("#fab").classList.remove("hidden");
   $("#hdBranch").textContent=b.name;
@@ -793,6 +937,7 @@ function enter(b){
   refreshNotifBtn();
   subscribePush();  // إعادة الاشتراك تلقائياً إن كان الإذن ممنوحاً مسبقاً
   render();
+  setBranchMode("parts");
 }
 function logout(){ auth.signOut(); }  // onAuthStateChanged يعيد عرض شاشة الدخول
 
@@ -1047,9 +1192,21 @@ async function clearAllData(){
 $("#overlay").addEventListener("click",e=>{if(e.target.id==="overlay")closeSheet();});
 
 /* ===================== لوحة المدير ===================== */
-let mPinBuf="";
-function openMgrLogin(){$("#login").classList.add("hidden");$("#mgrLogin").classList.remove("hidden");
-  mPinBuf="";mRenderDots();$("#mLoginErr").textContent="";}
+let mPinBuf="", staffEmail="admin@qrawi.app";
+function openMgrLogin(){
+  staffEmail="admin@qrawi.app";
+  $("#mgrLoginTitle").textContent="لوحة الإدارة";
+  $("#mgrLoginSub").textContent="أدخل رمز الإدارة";
+  $("#login").classList.add("hidden");$("#mgrLogin").classList.remove("hidden");
+  mPinBuf="";mRenderDots();$("#mLoginErr").textContent="";
+}
+function openAccLogin(){
+  staffEmail="accountant@qrawi.app";
+  $("#mgrLoginTitle").textContent="لوحة المحاسب";
+  $("#mgrLoginSub").textContent="أدخل رمز المحاسب";
+  $("#login").classList.add("hidden");$("#mgrLogin").classList.remove("hidden");
+  mPinBuf="";mRenderDots();$("#mLoginErr").textContent="";
+}
 function closeMgrLogin(){$("#mgrLogin").classList.add("hidden");$("#login").classList.remove("hidden");}
 function mRenderDots(){$("#mPinDots").innerHTML=[0,1,2,3,4,5].map(i=>
   `<div class="pin-dot ${i<mPinBuf.length?'filled':''}"></div>`).join("");}
@@ -1060,11 +1217,11 @@ function mPinClear(){mPinBuf="";mRenderDots();}
 async function mTryLogin(){
   $("#mLoginErr").textContent="جارٍ التحقق…";
   try{
-    await auth.signInWithEmailAndPassword("admin@qrawi.app", mPinBuf);
-    $("#mLoginErr").textContent="";  // onAuthStateChanged يفتح لوحة الإدارة
+    await auth.signInWithEmailAndPassword(staffEmail, mPinBuf);
+    $("#mLoginErr").textContent="";  // onAuthStateChanged يفتح اللوحة المناسبة
   }catch(e){
     $("#mLoginErr").textContent = e.code==="auth/too-many-requests"
-      ? "محاولات كثيرة، انتظر دقيقة" : "رمز الإدارة غير صحيح";
+      ? "محاولات كثيرة، انتظر دقيقة" : "الرمز غير صحيح";
     mPinBuf=""; mRenderDots();
   }
 }
@@ -1343,6 +1500,220 @@ document.addEventListener("keydown",e=>{
 });
 
 // المزامنة بين الأجهزة والتبويبات تتم تلقائياً عبر Firestore onSnapshot
+
+/* ===================== الحوالات البنكية ===================== */
+const BANKS=["الراجحي","الأهلي (SNB)","الرياض","البلاد","الإنماء","الجزيرة","العربي الوطني (anb)",
+  "الفرنسي","ساب (SABB)","الخليج الدولي (gib)","الأول (SAB)","stc pay","urpay","أخرى"];
+let TRANSFERS=[], branchMode="parts", txPhotoData=null;
+let txAttached=false, txRetries=0, txUnsub=null;
+let accTab="pending";
+const TX_STATUS={pending:{t:"بانتظار التأكيد",c:"tx-pending"},confirmed:{t:"مؤكدة ✓",c:"tx-confirmed"},rejected:{t:"مرفوضة",c:"tx-rejected"}};
+const ACC_TABS=[{k:"pending",label:"بانتظار التأكيد"},{k:"confirmed",label:"مؤكدة"},{k:"rejected",label:"مرفوضة"},{k:"all",label:"الكل"}];
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function fmtAmount(n){ return (Number(n)||0).toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:2}); }
+
+// مستمع الحوالات المباشر (نافذة 60 يوم) مع إعادة اتصال تلقائية
+function startTxListener(){
+  if(txAttached)return;
+  txAttached=true;
+  const cutoff=Date.now()-READ_WINDOW_DAYS*86400000;
+  txUnsub=db.collection("transfers").where("t",">=",cutoff).onSnapshot(snap=>{
+    txRetries=0;
+    TRANSFERS=snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
+    const acc=document.getElementById("acc");
+    if(acc && !acc.classList.contains("hidden")) renderAcc();
+    const app=document.getElementById("app");
+    if(app && !app.classList.contains("hidden") && branchMode==="transfers") renderBranchTransfers();
+  }, err=>{
+    console.error("transfers snapshot error:",err);
+    txAttached=false;
+    if(txRetries<8){ txRetries++; setTimeout(()=>{ if(firebase.auth().currentUser) startTxListener(); },1500); }
+  });
+}
+
+// ---- وضع الفرع: قطع الغيار / الحوالات ----
+function setBranchMode(m){
+  branchMode=m;
+  document.getElementById("mode-parts").classList.toggle("active",m==="parts");
+  document.getElementById("mode-tx").classList.toggle("active",m==="transfers");
+  document.getElementById("partsView").classList.toggle("hidden",m!=="parts");
+  document.getElementById("txView").classList.toggle("hidden",m!=="transfers");
+  const nr=document.getElementById("hdNewReq"); if(nr) nr.style.display=(m==="parts")?"":"none";
+  const fab=document.getElementById("fab"); if(fab) fab.style.display=(m==="parts")?"":"none";
+  if(m==="transfers") renderBranchTransfers();
+}
+
+// ---- نموذج حوالة جديدة ----
+function openTxForm(){
+  txPhotoData=null;
+  ["tx-amount","tx-ref","tx-invoice","tx-sender","tx-note"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("tx-photo-preview").innerHTML="";
+  document.getElementById("tx-bank").innerHTML=BANKS.map(b=>`<option value="${b}">${b}</option>`).join("");
+  document.getElementById("txOverlay").classList.add("show");
+}
+function closeTxForm(){ document.getElementById("txOverlay").classList.remove("show"); }
+
+// ضغط الصورة قبل الرفع (يوفّر المساحة والقراءات)
+function onTxPhoto(event){
+  const file=event.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const max=1000; let w=img.width,h=img.height;
+      if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+      const c=document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      txPhotoData=c.toDataURL("image/jpeg",0.6);
+      document.getElementById("tx-photo-preview").innerHTML=`<img src="${txPhotoData}">`;
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ---- عمليات السحابة للحوالات ----
+async function saveTransferToCloud(tx){
+  try{ await db.collection("transfers").doc(String(tx.id)).set(tx); }
+  catch(e){ console.error(e); toast("تعذّر الحفظ بالسحابة"); throw e; }
+}
+async function saveTransferImage(id,dataUrl){ await db.collection("transfer_images").doc(String(id)).set({image:dataUrl}); }
+async function loadTransferImage(id){ const d=await db.collection("transfer_images").doc(String(id)).get(); return d.exists?d.data().image:null; }
+async function deleteTransfer(id){
+  if(!confirm("حذف هذه الحوالة نهائياً؟"))return;
+  try{
+    await db.collection("transfers").doc(String(id)).delete();
+    await db.collection("transfer_images").doc(String(id)).delete().catch(()=>{});
+    toast("تم حذف الحوالة");
+  }catch(e){ console.error(e); toast("تعذّر الحذف"); }
+}
+async function setTransferStatus(id,status,reason){
+  const t=TRANSFERS.find(x=>x.id===id); if(!t)return;
+  const upd={...t,status,decidedAt:Date.now(),notifiedBranch:false};
+  if(reason!==undefined) upd.rejectReason=reason;
+  try{ await db.collection("transfers").doc(String(id)).set(upd); }
+  catch(e){ console.error(e); toast("تعذّر التحديث"); }
+}
+
+async function submitTransfer(){
+  if(!me){ toast("سجّل دخول الفرع أولاً"); return; }
+  const amount=parseFloat(document.getElementById("tx-amount").value);
+  if(!amount||amount<=0){ toast("أدخل المبلغ"); return; }
+  const now=Date.now(), id=newReqId();
+  const tx={
+    id, branchId:me.id, amount,
+    bank:document.getElementById("tx-bank").value,
+    reference:document.getElementById("tx-ref").value.trim(),
+    invoiceNo:document.getElementById("tx-invoice").value.trim(),
+    senderName:document.getElementById("tx-sender").value.trim(),
+    note:document.getElementById("tx-note").value.trim(),
+    hasReceipt:!!txPhotoData,
+    status:"pending", createdAt:now, t:now,
+    notified:false,        // إشعار للمحاسب
+    notifiedBranch:true    // لا إشعار للفرع عند الإنشاء
+  };
+  const btn=document.getElementById("txSubmit"); btn.disabled=true; btn.textContent="جارٍ الرفع…";
+  try{
+    if(txPhotoData) await saveTransferImage(id, txPhotoData);
+    await saveTransferToCloud(tx);
+    closeTxForm(); toast("تم رفع الحوالة — بانتظار تأكيد المحاسب");
+    setBranchMode("transfers");
+  }catch(e){ /* رسالة الخطأ عُرضت */ }
+  btn.disabled=false; btn.textContent="رفع الحوالة";
+}
+
+// ---- عارض صورة الإيصال ----
+async function viewReceipt(id){
+  document.getElementById("imgViewer").classList.add("show");
+  document.getElementById("imgViewerBody").innerHTML="جارٍ تحميل الإيصال…";
+  try{
+    const img=await loadTransferImage(id);
+    document.getElementById("imgViewerBody").innerHTML = img?`<img src="${img}">`:"لا توجد صورة مرفقة";
+  }catch(e){ document.getElementById("imgViewerBody").innerHTML="تعذّر تحميل الصورة"; }
+}
+function closeImgViewer(){ document.getElementById("imgViewer").classList.remove("show"); }
+
+// ---- بطاقة حوالة ----
+function txCardHTML(t,forAcc){
+  const s=TX_STATUS[t.status]||TX_STATUS.pending;
+  const rows=[];
+  if(t.bank) rows.push(`<div class="row"><span class="k">البنك</span><span>${esc(t.bank)}</span></div>`);
+  if(t.reference) rows.push(`<div class="row"><span class="k">رقم العملية</span><span>${esc(t.reference)}</span></div>`);
+  if(t.invoiceNo) rows.push(`<div class="row"><span class="k">رقم الفاتورة</span><span>${esc(t.invoiceNo)}</span></div>`);
+  if(t.senderName) rows.push(`<div class="row"><span class="k">المحوِّل</span><span>${esc(t.senderName)}</span></div>`);
+  rows.push(`<div class="row"><span class="k">التاريخ</span><span>${timeAgo(t.t)}</span></div>`);
+  const noteHtml=t.note?`<div class="tx-note">📝 ${esc(t.note)}</div>`:"";
+  const rejHtml=(t.status==="rejected"&&t.rejectReason)?`<div class="tx-reject-reason">سبب الرفض: ${esc(t.rejectReason)}</div>`:"";
+  const receiptBtn=t.hasReceipt?`<button class="tx-receipt-btn" onclick="viewReceipt(${t.id})">📄 عرض إيصال التحويل</button>`:"";
+  let foot="";
+  if(forAcc && t.status==="pending"){
+    foot=`<div class="tx-foot">
+      <button class="ia tx-reject-btn" onclick="rejectTransfer(${t.id})">✕ رفض</button>
+      <button class="ia tx-confirm-btn" onclick="confirmTransfer(${t.id})">✓ تأكيد الاستلام</button>
+    </div>`;
+  }
+  const del=(!forAcc && t.status==="pending")?`<button class="tx-del" onclick="deleteTransfer(${t.id})" title="حذف">🗑</button>`:"";
+  const branchLine=forAcc?`<div class="tx-branch">${esc(branchName(t.branchId))}</div>`:"";
+  return `<div class="tx-card ${t.status}">
+    ${del}
+    <div class="tx-top">
+      <div><div class="tx-amount">${fmtAmount(t.amount)} <small>ريال</small></div>${branchLine}</div>
+      <span class="tx-status ${s.c}">${s.t}</span>
+    </div>
+    <div class="tx-meta">${rows.join("")}</div>
+    ${noteHtml}${rejHtml}${receiptBtn}${foot}
+  </div>`;
+}
+
+function renderBranchTransfers(){
+  if(!me)return;
+  const mine=TRANSFERS.filter(t=>t.branchId===me.id);
+  const el=document.getElementById("txList");
+  el.innerHTML = mine.length ? mine.map(t=>txCardHTML(t,false)).join("")
+    : `<div class="empty"><div class="ic">💳</div>لا توجد حوالات بعد. اضغط «حوالة جديدة» لرفع أول حوالة.</div>`;
+}
+
+// ---- لوحة المحاسب ----
+function enterAccountant(){
+  $("#login").classList.add("hidden");
+  $("#mgrLogin").classList.add("hidden");
+  $("#app").classList.add("hidden");
+  $("#mgr").classList.add("hidden");
+  $("#fab").classList.add("hidden");
+  $("#acc").classList.remove("hidden");
+  currentSubId=0;
+  refreshNotifBtn();
+  subscribePush();
+  renderAcc();
+}
+function accLogout(){ auth.signOut(); }
+function setAccTab(k){ accTab=k; renderAcc(); }
+function filterTx(k){
+  const list=[...TRANSFERS].sort((a,b)=>b.t-a.t);
+  if(k==="all")return list;
+  return list.filter(t=>t.status===k);
+}
+function renderAcc(){
+  document.getElementById("accTabs").innerHTML=ACC_TABS.map(t=>{
+    const n=filterTx(t.k).length;
+    return `<button class="tab ${accTab===t.k?'active':''}" onclick="setAccTab('${t.k}')">${t.label}${n?` <span class="cnt">${n}</span>`:''}</button>`;
+  }).join("");
+  const pending=TRANSFERS.filter(t=>t.status==="pending");
+  const startDay=new Date(); startDay.setHours(0,0,0,0);
+  const todayConf=TRANSFERS.filter(t=>t.status==="confirmed"&&(t.decidedAt||0)>=startDay.getTime()).length;
+  const pendingSum=pending.reduce((s,t)=>s+(Number(t.amount)||0),0);
+  document.getElementById("a-pending").textContent=pending.length;
+  document.getElementById("a-today").textContent=todayConf;
+  document.getElementById("a-amount").textContent=fmtAmount(pendingSum);
+  document.getElementById("a-total").textContent=TRANSFERS.length;
+  const rows=filterTx(accTab);
+  const el=document.getElementById("accList");
+  el.innerHTML = rows.length ? rows.map(t=>txCardHTML(t,true)).join("")
+    : `<div class="empty"><div class="ic">💳</div>لا توجد حوالات ${accTab==="pending"?"بانتظار التأكيد":"في هذا القسم"}</div>`;
+}
+function confirmTransfer(id){ if(confirm("تأكيد استلام هذه الحوالة في الحساب البنكي؟")) setTransferStatus(id,"confirmed"); }
+function rejectTransfer(id){ const r=prompt("سبب الرفض (اختياري):",""); if(r===null)return; setTransferStatus(id,"rejected",r.trim()); }
 
 boot();
 </script>
