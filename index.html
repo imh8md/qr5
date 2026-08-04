@@ -336,15 +336,16 @@
     padding:10px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;
     font-family:inherit;transition:.15s}
   .mode-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
+  #mode-tx.active{background:var(--blue);border-color:var(--blue)}
   .tx-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 24px 0}
   .tx-hint{font-size:12px;color:var(--muted)}
   .tx-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
     overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.03);position:relative}
-  .tx-card.pending{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-soft)}
+  .tx-card.pending{border-color:var(--blue);box-shadow:0 0 0 1px var(--blue-bg)}
   .tx-top{padding:13px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
   .tx-amount{font-size:22px;font-weight:900;color:var(--txt);line-height:1}
   .tx-amount small{font-size:12px;font-weight:700;color:var(--muted)}
-  .tx-branch{font-size:12.5px;color:var(--gold);font-weight:700;margin-top:3px}
+  .tx-branch{font-size:12.5px;color:var(--blue);font-weight:700;margin-top:3px}
   .tx-meta{display:flex;flex-direction:column;gap:4px;padding:0 15px 12px;font-size:13px;color:var(--txt)}
   .tx-meta .row{display:flex;gap:6px}
   .tx-meta .k{color:var(--muted);min-width:78px}
@@ -352,7 +353,7 @@
   .tx-pending{background:var(--blue-bg);color:var(--blue)}
   .tx-confirmed{background:var(--green-bg);color:var(--green)}
   .tx-rejected{background:var(--red-bg);color:var(--red)}
-  .tx-receipt-btn{background:var(--soft);border:1px solid var(--line);color:var(--gold);
+  .tx-receipt-btn{background:var(--soft);border:1px solid var(--line);color:var(--blue);
     border-radius:9px;padding:7px 12px;font-size:12.5px;font-weight:700;cursor:pointer;margin:0 15px 12px}
   .tx-foot{padding:10px 15px;background:var(--soft);display:flex;gap:8px;justify-content:flex-end}
   .tx-foot .ia{border:none;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer}
@@ -368,8 +369,12 @@
     background:var(--red-bg);border-radius:9px;padding:7px 10px}
   .form-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   @media(max-width:480px){.form-2col{grid-template-columns:1fr}}
-  .photo-btn{width:100%;background:var(--soft);border:1px dashed var(--line);color:var(--gold);
+  .photo-btn{width:100%;background:var(--soft);border:1px dashed var(--line);color:var(--blue);
     border-radius:11px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+  .tx-bar .newreq-btn{background:var(--blue)}
+  #txOverlay .btn-send{background:var(--blue)}
+  #acc .stat.mine b{color:var(--blue)}
+  .acc-toolbar{padding:8px 24px 0;display:flex;justify-content:flex-end}
   .photo-preview{margin-top:10px}
   .photo-preview img{max-width:100%;max-height:200px;border-radius:10px;border:1px solid var(--line)}
   .img-viewer-inner{background:var(--panel);border-radius:14px;padding:12px;max-width:92vw;max-height:90vh;overflow:auto}
@@ -606,6 +611,7 @@
     </div>
   </header>
   <div class="tabs" id="accTabs"></div>
+  <div class="acc-toolbar"><button class="export-btn" onclick="exportTransfersExcel()">⬇ تصدير Excel</button></div>
   <div class="list" id="accList"></div>
 </div>
 
@@ -1714,6 +1720,36 @@ function renderAcc(){
 }
 function confirmTransfer(id){ if(confirm("تأكيد استلام هذه الحوالة في الحساب البنكي؟")) setTransferStatus(id,"confirmed"); }
 function rejectTransfer(id){ const r=prompt("سبب الرفض (اختياري):",""); if(r===null)return; setTransferStatus(id,"rejected",r.trim()); }
+
+// تصدير الحوالات (حسب القسم المعروض) إلى Excel/CSV عربي
+function exportTransfersExcel(){
+  const statusAr={pending:"بانتظار التأكيد",confirmed:"مؤكدة",rejected:"مرفوضة"};
+  const list=filterTx(accTab);
+  const rows=[["رقم الحوالة","التاريخ","الفرع","المبلغ","البنك","رقم العملية","رقم الفاتورة","المحوِّل","الحالة","وقت التأكيد/الرفض","سبب الرفض","ملاحظة"]];
+  list.forEach(t=>{
+    rows.push([
+      t.id,
+      new Date(t.t).toLocaleString("ar-SA"),
+      branchName(t.branchId),
+      t.amount,
+      t.bank||"",
+      t.reference||"",
+      t.invoiceNo||"",
+      t.senderName||"",
+      statusAr[t.status]||t.status,
+      t.decidedAt?new Date(t.decidedAt).toLocaleString("ar-SA"):"",
+      t.rejectReason||"",
+      t.note||""
+    ]);
+  });
+  const csv=rows.map(r=>r.map(c=>{const s=String(c).replace(/"/g,'""');return /[",\n]/.test(s)?`"${s}"`:s;}).join(",")).join("\r\n");
+  const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8;"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=`الحوالات-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast(`تم تصدير ${list.length} حوالة`);
+}
 
 boot();
 </script>
