@@ -331,12 +331,32 @@
     width:30px;height:30px;font-size:20px;cursor:pointer;flex:none;line-height:1}
 
   /* ===== الحوالات ===== */
-  .mode-toggle{display:flex;gap:8px;padding:14px 24px 0;max-width:420px}
+  .mode-toggle{display:flex;gap:8px;padding:14px 24px 0;max-width:560px}
   .mode-btn{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--muted);
     padding:10px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;
     font-family:inherit;transition:.15s}
   .mode-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
   #mode-tx.active{background:var(--blue);border-color:var(--blue);color:#fff}
+  #mode-arrival.active{background:var(--green);border-color:var(--green);color:#fff}
+  .arrival-form{padding:16px 24px 0;max-width:520px}
+  .msg-type-row{display:flex;gap:8px;margin-bottom:14px}
+  .mtype-btn{flex:1;padding:11px;border:1px solid var(--line);border-radius:11px;background:var(--panel);
+    color:var(--muted);font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  #mt-arrived.active{background:var(--green);border-color:var(--green);color:#fff}
+  #mt-delay.active{background:var(--gold);border-color:var(--gold);color:#fff}
+  .ar-preview{background:var(--soft);border:1px solid var(--line);border-radius:11px;padding:13px;
+    font-size:13px;color:var(--txt);line-height:1.9;white-space:pre-wrap;direction:rtl;margin:6px 0 14px}
+  .wa-btn{width:100%;background:#25D366;color:#fff;border:none;border-radius:12px;padding:14px;
+    font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  .wa-btn:active{transform:scale(.98)}
+  .ar-recent-title{padding:18px 24px 8px;font-size:14px;font-weight:700;color:var(--muted)}
+  .ar-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .ar-card .inv{font-weight:700;font-family:"Consolas",monospace}
+  .ar-card .meta{font-size:12px;color:var(--muted)}
+  .ar-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;white-space:nowrap;flex:none}
+  .ar-badge.arrived{background:var(--green-bg);color:var(--green)}
+  .ar-badge.delay{background:var(--gold-soft);color:var(--gold)}
   .tx-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 24px 0}
   .tx-hint{font-size:12px;color:var(--muted)}
   .tx-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
@@ -465,6 +485,7 @@
   <div class="mode-toggle">
     <button class="mode-btn active" id="mode-parts" onclick="setBranchMode('parts')">🔧 قطع الغيار</button>
     <button class="mode-btn" id="mode-tx" onclick="setBranchMode('transfers')">💳 الحوالات</button>
+    <button class="mode-btn" id="mode-arrival" onclick="setBranchMode('arrival')">📢 إبلاغ العميل</button>
   </div>
   <div id="partsView">
     <div class="tabs" id="tabs"></div>
@@ -479,6 +500,24 @@
       <span class="tx-hint">ارفع الحوالة هنا بدل الاتصال — المحاسب يؤكّدها ويصلك الرد.</span>
     </div>
     <div class="list" id="txList"></div>
+  </div>
+  <div id="arrivalView" class="hidden">
+    <div class="arrival-form">
+      <div class="msg-type-row">
+        <button class="mtype-btn active" id="mt-arrived" onclick="setArrivalType('arrived')">✅ وصلت الطلبية</button>
+        <button class="mtype-btn" id="mt-delay" onclick="setArrivalType('delay')">⏳ اعتذار عن التأخير</button>
+      </div>
+      <div class="field"><label>رقم الفاتورة *</label>
+        <input id="ar-inv" placeholder="12345" autocomplete="off" oninput="updateArrivalPreview()"></div>
+      <div class="field"><label>رقم واتساب العميل *</label>
+        <input id="ar-ph" type="tel" dir="ltr" placeholder="05xxxxxxxx" autocomplete="off"></div>
+      <div class="field"><label>مكان الاستلام</label>
+        <select id="ar-branch" onchange="updateArrivalPreview()"></select></div>
+      <div class="ar-preview" id="ar-preview">سيظهر نص الرسالة بعد كتابة رقم الفاتورة…</div>
+      <button class="wa-btn" onclick="sendArrivalWhatsApp()">💬 فتح واتساب وإرسال الرسالة</button>
+    </div>
+    <div class="ar-recent-title">آخر الإبلاغات</div>
+    <div class="list" id="arrivalList"></div>
   </div>
 </div>
 
@@ -1543,11 +1582,95 @@ function setBranchMode(m){
   branchMode=m;
   document.getElementById("mode-parts").classList.toggle("active",m==="parts");
   document.getElementById("mode-tx").classList.toggle("active",m==="transfers");
+  document.getElementById("mode-arrival").classList.toggle("active",m==="arrival");
   document.getElementById("partsView").classList.toggle("hidden",m!=="parts");
   document.getElementById("txView").classList.toggle("hidden",m!=="transfers");
+  document.getElementById("arrivalView").classList.toggle("hidden",m!=="arrival");
   const nr=document.getElementById("hdNewReq"); if(nr) nr.style.display=(m==="parts")?"":"none";
   const fab=document.getElementById("fab"); if(fab) fab.style.display=(m==="parts")?"":"none";
   if(m==="transfers") renderBranchTransfers();
+  if(m==="arrival") initArrivalForm();
+}
+
+/* ===== إبلاغ العميل بوصول الطلبية (واتساب) ===== */
+let arrivalType="arrived";
+function buildArrivalMsg(type, inv, brName){
+  if(type==="delay"){
+    return "شركة القرعاوي لقطع الغيار"
+      +"\n\nعزيزي العميل،"
+      +"\n\nنعتذر منكم بأن طلبيتكم رقم *"+inv+"* لم تصل بعد، ونحن نعمل على توفيرها في أقرب وقت ممكن."
+      +"\n\nنعتذر عن أي إزعاج ونشكر صبركم."
+      +"\n\nسيتم إبلاغكم فور وصول طلبيتكم إن شاء الله."
+      +"\n\nشركة القرعاوي";
+  }
+  const bl = brName ? "\nمكان الاستلام: *"+brName+"*" : "";
+  return "شركة القرعاوي لقطع الغيار"
+    +"\n\nعزيزي العميل،"
+    +"\n\nنُحيطكم علماً بأن طلبيتكم رقم *"+inv+"* قد وصلت وأصبحت جاهزة للاستلام."
+    +bl
+    +"\n\n_لاستلام الطلب يرجى إحضار الفاتورة الصفراء._"
+    +"\n\nنشكر ثقتكم بنا";
+}
+function setArrivalType(t){
+  arrivalType=t;
+  document.getElementById("mt-arrived").classList.toggle("active",t==="arrived");
+  document.getElementById("mt-delay").classList.toggle("active",t==="delay");
+  updateArrivalPreview();
+}
+function updateArrivalPreview(){
+  const inv=document.getElementById("ar-inv").value.trim();
+  const br=document.getElementById("ar-branch").value;
+  const p=document.getElementById("ar-preview");
+  if(p) p.textContent = inv ? buildArrivalMsg(arrivalType,inv,br) : "سيظهر نص الرسالة بعد كتابة رقم الفاتورة…";
+}
+function initArrivalForm(){
+  const sel=document.getElementById("ar-branch");
+  sel.innerHTML=BRANCHES.map(b=>`<option value="${b.name}"${(me&&b.id===me.id)?' selected':''}>${b.name}</option>`).join("");
+  arrivalType="arrived";
+  document.getElementById("mt-arrived").classList.add("active");
+  document.getElementById("mt-delay").classList.remove("active");
+  document.getElementById("ar-inv").value="";
+  document.getElementById("ar-ph").value="";
+  updateArrivalPreview();
+  loadRecentArrivals();
+}
+async function sendArrivalWhatsApp(){
+  const inv=document.getElementById("ar-inv").value.trim();
+  const rawPh=document.getElementById("ar-ph").value.trim();
+  const phone=rawPh.replace(/^0/,"966").replace(/[^0-9]/g,"");
+  const br=document.getElementById("ar-branch").value;
+  if(!inv){ toast("أدخل رقم الفاتورة"); return; }
+  if(!phone){ toast("أدخل رقم واتساب العميل"); return; }
+  const msg=buildArrivalMsg(arrivalType,inv,br);
+  window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(msg),"_blank");
+  try{
+    const id=newReqId();
+    await db.collection("arrivals").doc(String(id)).set({
+      id, branchId:me.id, invoice:inv, phone:rawPh, type:arrivalType, t:Date.now()
+    });
+  }catch(e){ console.warn("arrival log:",e); }
+  toast("تم فتح واتساب");
+  document.getElementById("ar-inv").value="";
+  document.getElementById("ar-ph").value="";
+  updateArrivalPreview();
+  setTimeout(loadRecentArrivals, 700);
+}
+async function loadRecentArrivals(){
+  if(!me) return;
+  const el=document.getElementById("arrivalList"); if(!el) return;
+  try{
+    const snap=await db.collection("arrivals").where("branchId","==",me.id).get();
+    const list=snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t).slice(0,20);
+    el.innerHTML = list.length ? list.map(a=>`
+      <div class="ar-card">
+        <div>
+          <div><span class="inv">فاتورة ${esc(a.invoice)}</span> <span class="meta">· ${esc(a.phone||"")}</span></div>
+          <div class="meta">${timeAgo(a.t)}</div>
+        </div>
+        <span class="ar-badge ${a.type==="delay"?"delay":"arrived"}">${a.type==="delay"?"اعتذار تأخير":"وصلت"}</span>
+      </div>`).join("")
+      : `<div class="empty"><div class="ic">📢</div>لا توجد إبلاغات بعد</div>`;
+  }catch(e){ console.warn(e); el.innerHTML=`<div class="empty">تعذّر تحميل السجل</div>`; }
 }
 
 // ---- نموذج حوالة جديدة ----
