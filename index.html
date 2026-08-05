@@ -586,6 +586,16 @@
   </header>
 
   <div class="mgr-body">
+    <!-- الحوالات البنكية (تأكيد/رفض من الإدارة) -->
+    <section class="panel kpi-panel">
+      <div class="log-header">
+        <h3>الحوالات البنكية <span id="mgrTxCount" class="chip-count" style="background:var(--blue)"></span></h3>
+        <button class="export-btn" onclick="exportTransfersExcel()">⬇ تصدير Excel</button>
+      </div>
+      <div class="perf-sub">حوالات الفروع — أكّدها أو ارفضها بعد التحقق من الحساب البنكي</div>
+      <div class="tabs" id="mgrTxTabs"></div>
+      <div id="mgrTxList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
+    </section>
     <!-- طلبات المستلزمات من الفروع -->
     <section class="panel kpi-panel">
       <h3>طلبات المستلزمات <span id="supMgrCount" class="chip-count"></span></h3>
@@ -967,7 +977,7 @@ auth.onAuthStateChanged(async user=>{
   try{ await user.getIdToken(); }catch(e){}
   const email=(user.email||"").toLowerCase();
   if(email==="admin@qrawi.app"){
-    startListener(); startSupListener(); enterMgr();
+    startListener(); startTxListener(); startSupListener(); enterMgr();
   }else if(email==="accountant@qrawi.app"){
     startTxListener(); enterAccountant();
   }else{
@@ -1336,9 +1346,27 @@ function enterMgr(){
   $("#flt-branch").innerHTML=`<option value="all">كل الفروع</option>`+
     BRANCHES.map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
   renderMgr();
+  renderMgrTransfers();
   renderMgrSupplies();
 }
 function mgrLogout(){ auth.signOut(); }  // onAuthStateChanged يعيد شاشة الدخول
+
+/* الحوالات داخل لوحة الإدارة (نفس منطق المحاسب) */
+let mgrTxTab="pending";
+function setMgrTxTab(k){ mgrTxTab=k; renderMgrTransfers(); }
+function renderMgrTransfers(){
+  const tabsEl=document.getElementById("mgrTxTabs"), listEl=document.getElementById("mgrTxList");
+  if(!tabsEl||!listEl) return;
+  tabsEl.innerHTML=ACC_TABS.map(t=>{
+    const n=filterTx(t.k).length;
+    return `<button class="tab ${mgrTxTab===t.k?'active':''}" onclick="setMgrTxTab('${t.k}')">${t.label}${n?` <span class="cnt">${n}</span>`:''}</button>`;
+  }).join("");
+  const pending=TRANSFERS.filter(t=>t.status==="pending").length;
+  const cnt=document.getElementById("mgrTxCount"); if(cnt) cnt.textContent = pending?pending+" بانتظار":"";
+  const rows=filterTx(mgrTxTab);
+  listEl.innerHTML=rows.length?rows.map(t=>txCardHTML(t,true)).join("")
+    :`<div class="empty" style="grid-column:1/-1"><div class="ic">💳</div>لا توجد حوالات ${mgrTxTab==='pending'?'بانتظار التأكيد':''}</div>`;
+}
 
 function fmtDur(ms){
   const m=Math.round(ms/60000);
@@ -1626,6 +1654,8 @@ function startTxListener(){
     TRANSFERS=snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
     const acc=document.getElementById("acc");
     if(acc && !acc.classList.contains("hidden")) renderAcc();
+    const mgr=document.getElementById("mgr");
+    if(mgr && !mgr.classList.contains("hidden")) renderMgrTransfers();
     const app=document.getElementById("app");
     if(app && !app.classList.contains("hidden") && branchMode==="transfers") renderBranchTransfers();
   }, err=>{
