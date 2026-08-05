@@ -331,10 +331,10 @@
     width:30px;height:30px;font-size:20px;cursor:pointer;flex:none;line-height:1}
 
   /* ===== الحوالات ===== */
-  .mode-toggle{display:flex;gap:8px;padding:14px 24px 0;max-width:560px}
-  .mode-btn{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--muted);
-    padding:10px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;
-    font-family:inherit;transition:.15s}
+  .mode-toggle{display:flex;flex-wrap:wrap;gap:8px;padding:14px 24px 0;max-width:620px}
+  .mode-btn{flex:1 1 120px;min-width:120px;background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    padding:10px;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;
+    font-family:inherit;transition:.15s;white-space:nowrap}
   .mode-btn.active{background:var(--gold);border-color:var(--gold);color:#fff}
   #mode-tx.active{background:var(--blue);border-color:var(--blue);color:#fff}
   #mode-arrival.active{background:var(--green);border-color:var(--green);color:#fff}
@@ -357,6 +357,28 @@
   .ar-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:8px;white-space:nowrap;flex:none}
   .ar-badge.arrived{background:var(--green-bg);color:var(--green)}
   .ar-badge.delay{background:var(--gold-soft);color:var(--gold)}
+  #mode-supplies.active{background:#7a5cc9;border-color:#7a5cc9;color:#fff}
+  .sup-bar .newreq-btn{background:#7a5cc9}
+  .sup-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;position:relative}
+  .sup-card.pending{border-color:#7a5cc9;box-shadow:0 0 0 1px #efeafa}
+  .sup-top{padding:12px 15px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .sup-branch{font-size:12.5px;color:#7a5cc9;font-weight:700}
+  .sup-items{padding:0 15px 10px;display:flex;flex-wrap:wrap;gap:6px}
+  .sup-chip{font-size:12px;padding:4px 10px;border-radius:8px;background:var(--soft);border:1px solid var(--line)}
+  .sup-note{margin:0 15px 12px;font-size:12px;color:var(--txt);background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:7px 10px}
+  .sup-foot{padding:10px 15px;background:var(--soft);display:flex;justify-content:flex-end}
+  .sup-done-btn{background:var(--green);color:#fff;border:none;border-radius:9px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer}
+  .chip-count{background:#7a5cc9;color:#fff;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:700;margin-inline-start:6px}
+
+  /* توسيط المحتوى على الشاشات الكبيرة (سطح المكتب/اللابتوب) */
+  @media(min-width:820px){
+    .wrap{max-width:1000px}
+    .mode-toggle{margin-inline:auto;justify-content:center}
+    .search-bar{display:flex;justify-content:center}
+    .search-bar input{max-width:100%;width:640px}
+    .arrival-form{margin-inline:auto}
+    .tx-bar,.sup-bar{justify-content:center}
+  }
   .tx-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 24px 0}
   .tx-hint{font-size:12px;color:var(--muted)}
   .tx-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
@@ -406,7 +428,7 @@
 <!-- شاشة الدخول -->
 <div id="login">
   <img src="assets/logo.png" alt="القرعاوي" class="brand-logo">
-  <div class="logo"><span class="dot"></span><h1>طلبات القطع</h1></div>
+  <div class="logo"><span class="dot"></span><h1>مرحبا بك</h1></div>
   <div class="sub">سجّل دخول فرعك للمتابعة</div>
   <div class="login-card">
     <label>اختر الفرع</label>
@@ -486,6 +508,7 @@
     <button class="mode-btn active" id="mode-parts" onclick="setBranchMode('parts')">🔧 قطع الغيار</button>
     <button class="mode-btn" id="mode-tx" onclick="setBranchMode('transfers')">💳 الحوالات</button>
     <button class="mode-btn" id="mode-arrival" onclick="setBranchMode('arrival')">📢 إبلاغ العميل</button>
+    <button class="mode-btn" id="mode-supplies" onclick="setBranchMode('supplies')">🧰 طلب مستلزمات</button>
   </div>
   <div id="partsView">
     <div class="tabs" id="tabs"></div>
@@ -518,6 +541,13 @@
     </div>
     <div class="ar-recent-title">آخر الإبلاغات</div>
     <div class="list" id="arrivalList"></div>
+  </div>
+  <div id="suppliesView" class="hidden">
+    <div class="tx-bar sup-bar">
+      <button class="newreq-btn" onclick="openSupForm()">➕ طلب مستلزمات جديد</button>
+      <span class="tx-hint">اطلب مستلزمات فرعك من الإدارة (أدوات، تغليف، قرطاسية…).</span>
+    </div>
+    <div class="list" id="supList"></div>
   </div>
 </div>
 
@@ -556,6 +586,12 @@
   </header>
 
   <div class="mgr-body">
+    <!-- طلبات المستلزمات من الفروع -->
+    <section class="panel kpi-panel">
+      <h3>طلبات المستلزمات <span id="supMgrCount" class="chip-count"></span></h3>
+      <div class="perf-sub">المستلزمات التي طلبتها الفروع من الإدارة</div>
+      <div id="mgrSuppliesList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
+    </section>
     <!-- مؤشرات إضافية -->
     <section class="panel kpi-panel">
       <div class="kpi-grid">
@@ -695,6 +731,26 @@
     <div class="sheet-actions">
       <button class="btn btn-cancel" onclick="closeTxForm()">إلغاء</button>
       <button class="btn btn-send" id="txSubmit" onclick="submitTransfer()">رفع الحوالة</button>
+    </div>
+  </div>
+</div>
+
+<!-- نموذج طلب مستلزمات -->
+<div class="overlay" id="supOverlay">
+  <div class="sheet">
+    <h2>طلب مستلزمات جديد</h2>
+    <div class="add-items">
+      <label>المستلزمات المطلوبة</label>
+      <div id="sup-rows"></div>
+      <button class="add-more" onclick="addSupRow()">+ إضافة صنف آخر</button>
+    </div>
+    <div class="field" style="margin-top:15px">
+      <label>ملاحظة (اختياري)</label>
+      <input id="sup-note" placeholder="مثال: عاجل — نفدت أكياس التغليف">
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-cancel" onclick="closeSupForm()">إلغاء</button>
+      <button class="btn btn-send" id="supSubmit" onclick="submitSupplies()">رفع الطلب</button>
     </div>
   </div>
 </div>
@@ -902,6 +958,7 @@ auth.onAuthStateChanged(async user=>{
     me=null; currentSubId=null; pinBuf=""; mPinBuf="";
     listenerAttached=false; snapRetries=0; if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; }
     txAttached=false; txRetries=0; if(txUnsub){ try{txUnsub();}catch(e){} txUnsub=null; } TRANSFERS=[];
+    supAttached=false; supRetries=0; if(supUnsub){ try{supUnsub();}catch(e){} supUnsub=null; } SUPPLIES=[];
     if(typeof renderPinDots==="function") renderPinDots();
     if(typeof mRenderDots==="function") mRenderDots();
     return;
@@ -910,14 +967,14 @@ auth.onAuthStateChanged(async user=>{
   try{ await user.getIdToken(); }catch(e){}
   const email=(user.email||"").toLowerCase();
   if(email==="admin@qrawi.app"){
-    startListener(); enterMgr();
+    startListener(); startSupListener(); enterMgr();
   }else if(email==="accountant@qrawi.app"){
     startTxListener(); enterAccountant();
   }else{
     const m=email.match(/^b(\d+)@qrawi\.app$/);
     if(m){
       const b=BRANCHES.find(x=>x.id===parseInt(m[1],10));
-      startListener(); startTxListener();
+      startListener(); startTxListener(); startSupListener();
       if(b) enter(b);
     }
   }
@@ -1279,6 +1336,7 @@ function enterMgr(){
   $("#flt-branch").innerHTML=`<option value="all">كل الفروع</option>`+
     BRANCHES.map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
   renderMgr();
+  renderMgrSupplies();
 }
 function mgrLogout(){ auth.signOut(); }  // onAuthStateChanged يعيد شاشة الدخول
 
@@ -1583,13 +1641,106 @@ function setBranchMode(m){
   document.getElementById("mode-parts").classList.toggle("active",m==="parts");
   document.getElementById("mode-tx").classList.toggle("active",m==="transfers");
   document.getElementById("mode-arrival").classList.toggle("active",m==="arrival");
+  document.getElementById("mode-supplies").classList.toggle("active",m==="supplies");
   document.getElementById("partsView").classList.toggle("hidden",m!=="parts");
   document.getElementById("txView").classList.toggle("hidden",m!=="transfers");
   document.getElementById("arrivalView").classList.toggle("hidden",m!=="arrival");
+  document.getElementById("suppliesView").classList.toggle("hidden",m!=="supplies");
   const nr=document.getElementById("hdNewReq"); if(nr) nr.style.display=(m==="parts")?"":"none";
   const fab=document.getElementById("fab"); if(fab) fab.style.display=(m==="parts")?"":"none";
   if(m==="transfers") renderBranchTransfers();
   if(m==="arrival") initArrivalForm();
+  if(m==="supplies") renderBranchSupplies();
+}
+
+/* ===== طلب المستلزمات ===== */
+let SUPPLIES=[], supAttached=false, supRetries=0, supUnsub=null;
+function startSupListener(){
+  if(supAttached) return; supAttached=true;
+  const cutoff=Date.now()-READ_WINDOW_DAYS*86400000;
+  supUnsub=db.collection("supplies").where("t",">=",cutoff).onSnapshot(snap=>{
+    supRetries=0;
+    SUPPLIES=snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
+    const appEl=document.getElementById("app"), mgrEl=document.getElementById("mgr");
+    if(appEl && !appEl.classList.contains("hidden") && branchMode==="supplies") renderBranchSupplies();
+    if(mgrEl && !mgrEl.classList.contains("hidden")) renderMgrSupplies();
+  }, err=>{
+    console.error("supplies snapshot:",err); supAttached=false;
+    if(supRetries<8){ supRetries++; setTimeout(()=>{ if(firebase.auth().currentUser) startSupListener(); },1500); }
+  });
+}
+function openSupForm(){
+  document.getElementById("sup-note").value="";
+  document.getElementById("sup-rows").innerHTML="";
+  addSupRow();
+  document.getElementById("supOverlay").classList.add("show");
+}
+function closeSupForm(){ document.getElementById("supOverlay").classList.remove("show"); }
+function addSupRow(name="",qty=1){
+  const div=document.createElement("div");
+  div.className="irow";
+  div.innerHTML=`
+    <input class="sup-name" placeholder="اسم الصنف" autocomplete="off" value="${esc(name)}" style="grid-column:1;grid-row:1">
+    <input class="sup-qty" type="number" min="1" value="${qty}" style="grid-column:2;grid-row:1;text-align:center">
+    <button class="del" onclick="this.parentElement.remove()">×</button>`;
+  document.getElementById("sup-rows").appendChild(div);
+  if(!name) div.querySelector(".sup-name").focus();
+}
+async function submitSupplies(){
+  const rows=[...document.querySelectorAll("#sup-rows .irow")];
+  const items=rows.map(r=>({name:r.querySelector(".sup-name").value.trim(), qty:+r.querySelector(".sup-qty").value||1})).filter(x=>x.name);
+  if(!items.length){ toast("أضف صنف واحد على الأقل"); return; }
+  const now=Date.now(), id=newReqId();
+  const sup={ id, branchId:me.id, items, note:document.getElementById("sup-note").value.trim(), status:"pending", createdAt:now, t:now };
+  const btn=document.getElementById("supSubmit"); btn.disabled=true; btn.textContent="جارٍ الرفع…";
+  try{ await db.collection("supplies").doc(String(id)).set(sup); closeSupForm(); toast("تم رفع طلب المستلزمات"); }
+  catch(e){ console.error(e); toast("تعذّر الرفع"); }
+  btn.disabled=false; btn.textContent="رفع الطلب";
+}
+async function markSupplyDone(id){
+  const s=SUPPLIES.find(x=>x.id===id); if(!s) return;
+  try{ await db.collection("supplies").doc(String(id)).set({...s,status:"done",doneAt:Date.now()}); }
+  catch(e){ console.error(e); toast("تعذّر التحديث"); }
+}
+function deleteSupply(id){
+  if(!confirm("حذف طلب المستلزمات؟")) return;
+  db.collection("supplies").doc(String(id)).delete().then(()=>toast("تم الحذف")).catch(e=>{console.error(e);toast("تعذّر الحذف");});
+}
+function supCardHTML(s, forMgr){
+  const chips=(s.items||[]).map(i=>`<span class="sup-chip">${esc(i.name)} ×${i.qty}</span>`).join("");
+  const badge = s.status==="done" ? `<span class="tx-status tx-confirmed">تم التوفير ✓</span>` : `<span class="tx-status tx-pending">قيد المعالجة</span>`;
+  const branchLine = forMgr ? `<div class="sup-branch">${branchName(s.branchId)}</div>` : "";
+  const note = s.note ? `<div class="sup-note">📝 ${esc(s.note)}</div>` : "";
+  const foot = (forMgr && s.status!=="done") ? `<div class="sup-foot"><button class="sup-done-btn" onclick="markSupplyDone(${s.id})">✓ تم التوفير</button></div>` : "";
+  const del = (!forMgr && s.status!=="done") ? `<button class="tx-del" onclick="deleteSupply(${s.id})" title="حذف">🗑</button>` : "";
+  return `<div class="sup-card ${s.status==='done'?'':'pending'}">
+    ${del}
+    <div class="sup-top">
+      <div>${branchLine}<div style="font-size:14px;font-weight:700">${(s.items||[]).length} صنف</div>
+        <div style="font-size:12px;color:var(--muted)">${timeAgo(s.t)}</div></div>
+      ${badge}
+    </div>
+    <div class="sup-items">${chips}</div>
+    ${note}${foot}
+  </div>`;
+}
+function renderBranchSupplies(){
+  const el=document.getElementById("supList"); if(!el) return;
+  const mine=SUPPLIES.filter(s=>s.branchId===me.id);
+  el.innerHTML = mine.length ? mine.map(s=>supCardHTML(s,false)).join("")
+    : `<div class="empty"><div class="ic">🧰</div>لا توجد طلبات مستلزمات بعد</div>`;
+}
+function renderMgrSupplies(){
+  const el=document.getElementById("mgrSuppliesList"); if(!el) return;
+  const pending=SUPPLIES.filter(s=>s.status!=="done");
+  const cnt=document.getElementById("supMgrCount");
+  if(cnt) cnt.textContent = pending.length ? pending.length+" بانتظار" : "";
+  const list=[...SUPPLIES].sort((a,b)=>{
+    const ap=a.status!=="done"?0:1, bp=b.status!=="done"?0:1;
+    return ap-bp || b.t-a.t;
+  });
+  el.innerHTML = list.length ? list.map(s=>supCardHTML(s,true)).join("")
+    : `<div class="empty" style="grid-column:1/-1"><div class="ic">🧰</div>لا توجد طلبات مستلزمات</div>`;
 }
 
 /* ===== إبلاغ العميل بوصول الطلبية (واتساب) ===== */
