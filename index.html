@@ -234,7 +234,7 @@
   .nav-badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;background:var(--red);color:#fff;
     font-size:11px;line-height:18px;margin-inline-start:4px}
   .nav-badge:empty{display:none}
-  .attn-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .attn-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
   .attn{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:right;cursor:pointer;
     background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;font-family:inherit;
     border-inline-start:4px solid var(--line);transition:.15s}
@@ -255,8 +255,8 @@
     .mgr-stats{grid-template-columns:repeat(6,1fr)}
     .mgr-stats .stat:nth-child(-n+3){grid-column:span 2}
     .mgr-stats .stat:nth-child(n+4){grid-column:span 3}
-    .mgr-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
-    .mgr-nav button{padding:8px 3px;font-size:12px;white-space:normal;line-height:1.35}
+    .mgr-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+    .mgr-nav button{padding:7px 2px;font-size:11.5px;white-space:normal;line-height:1.35}
     .nav-badge{min-width:16px;padding:0 4px;font-size:10px;line-height:16px}
     .mgr-body .kpi-grid{grid-template-columns:repeat(2,1fr)}
     .mgr-body .kpi:nth-child(2){border-inline-end:none}
@@ -414,6 +414,18 @@
     font-weight:700;cursor:pointer;line-height:1}
   .sp-qty b{min-width:22px;font-size:15px}
   .sup-other-lbl{font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 6px}
+  .cat-add-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .cat-add-bar .newreq-btn{background:#c0392b}
+  .cat-new{position:absolute;top:6px;right:8px;font-size:10px;font-weight:700;color:#c0392b;background:#fbeae8;
+    padding:1px 7px;border-radius:8px;z-index:1}
+  .gen-card .cat-new{right:auto;left:8px}
+  .ca-preview img{margin-top:8px;max-width:140px;max-height:140px;border-radius:10px;border:1px solid var(--line)}
+  .ca-thumb{width:48px;height:48px;flex:none;border-radius:10px;object-fit:contain;background:#fff;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:22px}
+  .ca-code{direction:ltr;text-align:right;font-family:"Courier New",monospace;font-weight:700;color:#c0392b;font-size:14px}
+  .sup-card.pending.ca-pending{border-color:#c0392b;box-shadow:0 0 0 1px #fbeae8}
+  .ca-rej{background:var(--red-bg);color:var(--red);border:none;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer}
+  .attn.cat.hot{border-inline-start-color:#c0392b} .attn.cat.hot b{color:#c0392b}
   .cat-wrap{padding:14px 24px 0;max-width:1000px;margin-inline:auto}
   .cat-seg{display:flex;background:var(--soft);border-radius:12px;padding:4px;gap:4px;max-width:420px}
   .cat-seg button{flex:1;border:none;background:none;padding:9px;border-radius:9px;font-size:13.5px;
@@ -672,6 +684,10 @@
   </div>
   <div id="catalogView" class="hidden">
     <div class="cat-wrap">
+      <div class="cat-add-bar">
+        <button class="newreq-btn" onclick="openCatAdd()">➕ إضافة للكتالوج</button>
+        <span class="tx-hint" id="catMyPending">تُعتمد الإضافة من الإدارة قبل ما تظهر للجميع.</span>
+      </div>
       <div class="cat-seg">
         <button id="catSegCars" class="active" onclick="setCatSection('cars')">🚗 رموز السيارات</button>
         <button id="catSegGen" onclick="setCatSection('general')">⚙️ أرقام عامة</button>
@@ -721,6 +737,7 @@
     <button data-pane="overview" onclick="setMgrPane('overview')">📊 نظرة عامة</button>
     <button data-pane="transfers" onclick="setMgrPane('transfers')">💳 الحوالات <span class="nav-badge" id="navTxBadge"></span></button>
     <button data-pane="supplies" onclick="setMgrPane('supplies')">🧰 المستلزمات <span class="nav-badge" id="navSupBadge"></span></button>
+    <button data-pane="catalog" onclick="setMgrPane('catalog')">📘 الكتالوج <span class="nav-badge" id="navCatBadge"></span></button>
     <button data-pane="log" onclick="setMgrPane('log')">📋 سجل الطلبات</button>
   </nav>
 
@@ -731,6 +748,8 @@
         <span class="attn-t"><b id="attnTx">0</b> حوالة بانتظار التأكيد</span><span class="attn-s" id="attnTxSum"></span></button>
       <button class="attn sup" onclick="setMgrPane('supplies')"><span class="attn-ic">🧰</span>
         <span class="attn-t"><b id="attnSup">0</b> طلب مستلزمات جديد</span><span class="attn-s">اضغط للعرض</span></button>
+      <button class="attn cat" onclick="setMgrPane('catalog')"><span class="attn-ic">📘</span>
+        <span class="attn-t"><b id="attnCat">0</b> إضافة كتالوج للاعتماد</span><span class="attn-s">من الفروع</span></button>
       <button class="attn late" onclick="showLateRequests()"><span class="attn-ic">⏰</span>
         <span class="attn-t"><b id="attnLate">0</b> طلب متأخر</span><span class="attn-s">بدون رد لأكثر من 24 ساعة</span></button>
     </section>
@@ -793,6 +812,16 @@
       <h3>طلبات المستلزمات <span id="supMgrCount" class="chip-count"></span></h3>
       <div class="perf-sub">المستلزمات التي طلبتها الفروع من الإدارة</div>
       <div id="mgrSuppliesList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
+    </section>
+  </div>
+
+  <!-- اعتماد إضافات الكتالوج -->
+  <div class="mgr-body mgr-pane hidden" id="pane-catalog">
+    <section class="panel span-all">
+      <h3>إضافات الكتالوج <span id="catMgrCount" class="chip-count" style="background:#c0392b"></span></h3>
+      <div class="perf-sub">رموز وأرقام أضافتها الفروع — اعتمدها عشان تظهر في كتالوج الجميع</div>
+      <div class="tabs" id="mgrCatTabs" style="padding:0 0 4px"></div>
+      <div id="mgrCatList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
     </section>
   </div>
 
@@ -867,6 +896,51 @@
     <div class="sheet-actions">
       <button class="btn btn-cancel" onclick="closeTxForm()">إلغاء</button>
       <button class="btn btn-send" id="txSubmit" onclick="submitTransfer()">رفع الحوالة</button>
+    </div>
+  </div>
+</div>
+
+<!-- نموذج إضافة للكتالوج -->
+<div class="overlay" id="catAddOverlay">
+  <div class="sheet">
+    <h2>إضافة للكتالوج</h2>
+    <div class="cat-seg" style="margin-bottom:14px">
+      <button id="caKindCar" class="active" onclick="setCatAddKind('car')">🚗 رمز سيارة</button>
+      <button id="caKindGen" onclick="setCatAddKind('general')">⚙️ رقم عام</button>
+    </div>
+    <div id="caCarFields">
+      <div class="form-2col">
+        <div class="field"><label>نوع السيارة *</label><input id="ca-car" list="caCarList" placeholder="مثال: هايلوكس"></div>
+        <div class="field"><label>الفئة (اختياري)</label><input id="ca-group" list="caGroupList" placeholder="اتركها فاضية لو مافي"></div>
+      </div>
+      <div class="form-2col">
+        <div class="field"><label>الرمز *</label><input id="ca-code" dir="ltr" placeholder="GUN126" style="text-transform:uppercase"></div>
+        <div class="field"><label>سنوات الموديل</label><input id="ca-years" dir="ltr" placeholder="2016-2023"></div>
+      </div>
+      <div class="form-2col">
+        <div class="field"><label>المحرك</label><input id="ca-engine" dir="ltr" placeholder="2GD-FTV"></div>
+        <div class="field"><label>الوصف *</label><input id="ca-desc" placeholder="ديزل دبل"></div>
+      </div>
+    </div>
+    <div id="caGenFields" class="hidden">
+      <div class="form-2col">
+        <div class="field"><label>الفئة *</label><input id="ca-cat" list="caCatList" placeholder="مثال: زيت مكينة"></div>
+        <div class="field"><label>اسم المنتج *</label><input id="ca-name" placeholder="مثال: فلتر زيت"></div>
+      </div>
+      <div class="form-2col">
+        <div class="field"><label>الرقم *</label><input id="ca-gcode" dir="ltr" placeholder="90915-YZZE1" style="text-transform:uppercase"></div>
+        <div class="field"><label>السيارات المتوافقة</label><input id="ca-cars" placeholder="جميع سيارات تويوتا"></div>
+      </div>
+      <div class="field"><label>صورة المنتج (اختياري)</label>
+        <button type="button" class="photo-btn" onclick="document.getElementById('ca-photo').click()">📷 التقط أو اختر صورة</button>
+        <input id="ca-photo" type="file" accept="image/*" onchange="onCatAddPhoto(event)" style="display:none">
+        <div id="ca-photo-preview" class="ca-preview"></div>
+      </div>
+    </div>
+    <datalist id="caCarList"></datalist><datalist id="caGroupList"></datalist><datalist id="caCatList"></datalist>
+    <div class="sheet-actions">
+      <button class="btn btn-cancel" onclick="closeCatAdd()">إلغاء</button>
+      <button class="btn btn-send" id="caSubmit" onclick="submitCatAdd()">إرسال للاعتماد</button>
     </div>
   </div>
 </div>
@@ -1097,6 +1171,7 @@ auth.onAuthStateChanged(async user=>{
     listenerAttached=false; snapRetries=0; if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; }
     txAttached=false; txRetries=0; if(txUnsub){ try{txUnsub();}catch(e){} txUnsub=null; } TRANSFERS=[];
     supAttached=false; supRetries=0; if(supUnsub){ try{supUnsub();}catch(e){} supUnsub=null; } SUPPLIES=[];
+    catAttached=false; catRetries=0; if(catUnsub){ try{catUnsub();}catch(e){} catUnsub=null; } CAT_ADDS=[]; catCache=null;
     if(typeof renderPinDots==="function") renderPinDots();
     if(typeof mRenderDots==="function") mRenderDots();
     return;
@@ -1105,7 +1180,7 @@ auth.onAuthStateChanged(async user=>{
   try{ await user.getIdToken(); }catch(e){}
   const email=(user.email||"").toLowerCase();
   if(email==="admin@qrawi.app"){
-    startListener(); startTxListener(); startSupListener(); enterMgr();
+    startListener(); startTxListener(); startSupListener(); startCatListener(); enterMgr();
   }else if(email==="accountant@qrawi.app"){
     // حساب المحاسب أُلغي — الحوالات صارت من لوحة الإدارة
     toast("لوحة المحاسب أُلغيت — الحوالات صارت من لوحة الإدارة"); auth.signOut();
@@ -1113,7 +1188,7 @@ auth.onAuthStateChanged(async user=>{
     const m=email.match(/^b(\d+)@qrawi\.app$/);
     if(m){
       const b=BRANCHES.find(x=>x.id===parseInt(m[1],10));
-      startListener(); startTxListener(); startSupListener();
+      startListener(); startTxListener(); startSupListener(); startCatListener();
       if(b) enter(b);
     }
   }
@@ -1469,6 +1544,7 @@ function enterMgr(){
   renderMgr();
   renderMgrTransfers();
   renderMgrSupplies();
+  renderMgrCatalog();
   let pane="overview"; try{ pane=localStorage.getItem("mgrPane")||"overview"; }catch(e){}
   setMgrPane(pane);
   // الإدارة تستقبل إشعارات الحوالات (كانت للمحاسب سابقاً)
@@ -1476,7 +1552,7 @@ function enterMgr(){
 }
 function mgrLogout(){ auth.signOut(); }  // onAuthStateChanged يعيد شاشة الدخول
 
-const MGR_PANES=["overview","transfers","supplies","log"];
+const MGR_PANES=["overview","transfers","supplies","catalog","log"];
 function setMgrPane(k){
   if(!MGR_PANES.includes(k)) k="overview";
   MGR_PANES.forEach(p=>document.getElementById("pane-"+p).classList.toggle("hidden",p!==k));
@@ -1496,6 +1572,8 @@ function updateMgrAttention(){
   set("navTxBadge", txP.length||""); set("navSupBadge", supP||"");
   const hot=(sel,on)=>{ const el=document.querySelector(sel); if(el) el.classList.toggle("hot",on>0); };
   hot(".attn.tx",txP.length); hot(".attn.sup",supP); hot(".attn.late",late);
+  const catP=CAT_ADDS.filter(a=>a.status==="pending").length;
+  set("attnCat",catP); set("navCatBadge",catP||""); hot(".attn.cat",catP);
 }
 
 /* الحوالات داخل لوحة الإدارة */
@@ -1843,15 +1921,34 @@ function catCopy(text,el){
     document.body.appendChild(t); t.select(); try{document.execCommand("copy");}catch(e){} t.remove(); done(); };
   if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done).catch(fallback); else fallback();
 }
-function catCarRows(){ const out=[]; for(const car in CATALOG.cars) for(const g in CATALOG.cars[car]) CATALOG.cars[car][g].forEach(r=>out.push({car,group:g,...r})); return out; }
-function catGenItems(){ const out=[]; for(const cat in CATALOG.general) CATALOG.general[cat].forEach(it=>out.push({cat,...it})); return out; }
+// الكتالوج الثابت + الإضافات المعتمدة من الإدارة (مجموعة catalog_adds)
+let CAT_ADDS=[], catCache=null;
+function catSafeImg(v){ v=String(v||""); return (v.startsWith("data:image/")||v.startsWith("assets/"))?v:""; }
+function catData(){
+  if(catCache) return catCache;
+  const d={cars:{},general:{}};
+  for(const car in CATALOG.cars){ d.cars[car]={}; for(const g in CATALOG.cars[car]) d.cars[car][g]=CATALOG.cars[car][g].slice(); }
+  for(const cat in CATALOG.general) d.general[cat]=CATALOG.general[cat].slice();
+  CAT_ADDS.filter(a=>a.status==="approved").sort((a,b)=>a.t-b.t).forEach(a=>{
+    if(a.kind==="car"){
+      const groups=d.cars[a.car]||(d.cars[a.car]={});
+      const g=a.group||(Object.keys(groups).length===1?Object.keys(groups)[0]:a.car);
+      (groups[g]||(groups[g]=[])).push({code:a.code,years:a.years||"",engine:a.engine||"",desc:a.desc||"",added:true});
+    }else if(a.kind==="general"){
+      (d.general[a.cat]||(d.general[a.cat]=[])).push({name:a.name,code:a.code,cars:a.cars||"",img:catSafeImg(a.img),added:true});
+    }
+  });
+  return catCache=d;
+}
+function catCarRows(){ const C=catData(), out=[]; for(const car in C.cars) for(const g in C.cars[car]) C.cars[car][g].forEach(r=>out.push({car,group:g,...r})); return out; }
+function catGenItems(){ const C=catData(), out=[]; for(const cat in C.general) C.general[cat].forEach(it=>out.push({cat,...it})); return out; }
 function codeCardHTML(r){
-  return `<div class="code-card" data-copy="${esc(r.code)}L#"><div class="cc-code">${esc(r.code)}</div>`+
+  return `<div class="code-card" data-copy="${esc(r.code)}L#">${r.added?'<span class="cat-new">مضاف</span>':''}<div class="cc-code">${esc(r.code)}</div>`+
     `<div class="cc-desc">${esc(r.desc)}</div><div class="cc-meta">${esc(r.years)} · ${esc(r.engine)}</div></div>`;
 }
 function genCardHTML(it){
   const img=it.img?`<img src="${esc(it.img)}" alt="" loading="lazy">`:`<span class="ph">⚙️</span>`;
-  return `<div class="gen-card" data-copy="${esc(it.code)}"><div class="gen-img">${img}</div>`+
+  return `<div class="gen-card" data-copy="${esc(it.code)}">${it.added?'<span class="cat-new">مضاف</span>':''}<div class="gen-img">${img}</div>`+
     (it.img?`<button class="gen-zoom" data-zoom="${esc(it.code)}" title="تكبير">🔍</button>`:"")+
     `<div class="gen-body"><div class="gen-name">${esc(it.name)}</div><div class="gen-code">${esc(it.code)}</div>`+
     `<div class="gen-cars">${esc(it.cars)}</div></div></div>`;
@@ -1859,6 +1956,7 @@ function genCardHTML(it){
 function renderCatalog(){
   const body=document.getElementById("catBody"); if(!body) return;
   if(typeof CATALOG==="undefined"){ body.innerHTML=`<div class="empty">تعذّر تحميل الكتالوج</div>`; return; }
+  updateMyCatPending();
   document.getElementById("catSegCars").classList.toggle("active",catSection==="cars");
   document.getElementById("catSegGen").classList.toggle("active",catSection==="general");
   const q=catNorm(document.getElementById("catSearch").value);
@@ -1874,18 +1972,20 @@ function renderCatalog(){
     return;
   }
   if(catSection==="cars"){
-    const carNames=Object.keys(CATALOG.cars);
-    if(!catCar || !CATALOG.cars[catCar]) catCar=carNames[0];
-    const groups=Object.keys(CATALOG.cars[catCar]);
-    if(!catGroup[catCar] || !CATALOG.cars[catCar][catGroup[catCar]]) catGroup[catCar]=groups[0];
+    const C=catData();
+    const carNames=Object.keys(C.cars);
+    if(!catCar || !C.cars[catCar]) catCar=carNames[0];
+    const groups=Object.keys(C.cars[catCar]);
+    if(!catGroup[catCar] || !C.cars[catCar][catGroup[catCar]]) catGroup[catCar]=groups[0];
     body.innerHTML=`<div class="cat-chips">`+carNames.map(c=>`<button class="cat-chip${c===catCar?" active":""}" data-car="${esc(c)}">${esc(c)}</button>`).join("")+`</div>`+
       (groups.length>1?`<div class="cat-chips sub">`+groups.map(g=>`<button class="cat-chip${g===catGroup[catCar]?" active":""}" data-group="${esc(g)}">${esc(g)}</button>`).join("")+`</div>`:"")+
       `<div class="cat-hint">اضغط على الرمز لنسخه مع L# جاهز للبحث</div>`+
-      `<div class="cat-grid">`+CATALOG.cars[catCar][catGroup[catCar]].map(codeCardHTML).join("")+`</div>`;
+      `<div class="cat-grid">`+C.cars[catCar][catGroup[catCar]].map(codeCardHTML).join("")+`</div>`;
   } else {
-    const tabs=["الكل",...Object.keys(CATALOG.general)];
+    const C=catData();
+    const tabs=["الكل",...Object.keys(C.general)];
     if(!tabs.includes(catGenTab)) catGenTab="الكل";
-    const items=catGenTab==="الكل"?catGenItems():CATALOG.general[catGenTab];
+    const items=catGenTab==="الكل"?catGenItems():C.general[catGenTab];
     body.innerHTML=`<div class="cat-chips">`+tabs.map(t=>`<button class="cat-chip${t===catGenTab?" active":""}" data-gen="${esc(t)}">${esc(t)}</button>`).join("")+`</div>`+
       `<div class="cat-hint">اضغط على المنتج لنسخ رقمه</div><div class="cat-grid gen-grid">`+items.map(genCardHTML).join("")+`</div>`;
   }
@@ -2266,6 +2366,122 @@ function exportTransfersExcel(){
   a.href=url; a.download=`الحوالات-${new Date().toISOString().slice(0,10)}.csv`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   toast(`تم تصدير ${list.length} حوالة`);
+}
+
+/* ===== إضافات الكتالوج: الفرع يضيف ← الإدارة تعتمد ===== */
+let catAttached=false, catRetries=0, catUnsub=null, catAddKind="car", catAddImg="", mgrCatTab="pending";
+function startCatListener(){
+  if(catAttached) return; catAttached=true;
+  catUnsub=db.collection("catalog_adds").onSnapshot(snap=>{
+    catRetries=0;
+    CAT_ADDS=snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t); catCache=null;
+    const appEl=document.getElementById("app"), mgrEl=document.getElementById("mgr");
+    if(appEl && !appEl.classList.contains("hidden") && branchMode==="catalog") renderCatalog();
+    if(mgrEl && !mgrEl.classList.contains("hidden")) renderMgrCatalog();
+  }, err=>{
+    console.error("catalog_adds snapshot:",err); catAttached=false;
+    if(catRetries<8){ catRetries++; setTimeout(()=>{ if(firebase.auth().currentUser) startCatListener(); },1500); }
+  });
+}
+function updateMyCatPending(){
+  const el=document.getElementById("catMyPending"); if(!el||!me) return;
+  const n=CAT_ADDS.filter(a=>a.branchId===me.id&&a.status==="pending").length;
+  el.textContent = n ? `لديك ${n} إضافة بانتظار اعتماد الإدارة` : "تُعتمد الإضافة من الإدارة قبل ما تظهر للجميع.";
+}
+function setCatAddKind(k){
+  catAddKind=k;
+  document.getElementById("caKindCar").classList.toggle("active",k==="car");
+  document.getElementById("caKindGen").classList.toggle("active",k==="general");
+  document.getElementById("caCarFields").classList.toggle("hidden",k!=="car");
+  document.getElementById("caGenFields").classList.toggle("hidden",k!=="general");
+}
+function openCatAdd(){
+  ["ca-car","ca-group","ca-code","ca-years","ca-engine","ca-desc","ca-cat","ca-name","ca-gcode","ca-cars"].forEach(id=>document.getElementById(id).value="");
+  catAddImg=""; document.getElementById("ca-photo-preview").innerHTML="";
+  const C=catData(), opt=v=>`<option value="${esc(v)}"></option>`;
+  document.getElementById("caCarList").innerHTML=Object.keys(C.cars).map(opt).join("");
+  document.getElementById("caCatList").innerHTML=Object.keys(C.general).map(opt).join("");
+  const carIn=document.getElementById("ca-car");
+  carIn.oninput=()=>{ const g=C.cars[carIn.value.trim()]; document.getElementById("caGroupList").innerHTML=g?Object.keys(g).map(opt).join(""):""; };
+  if(catSection==="cars" && catCar){ carIn.value=catCar; carIn.oninput(); }
+  if(catSection==="general" && catGenTab!=="الكل") document.getElementById("ca-cat").value=catGenTab;
+  setCatAddKind(catSection==="general"?"general":"car");
+  document.getElementById("catAddOverlay").classList.add("show");
+}
+function closeCatAdd(){ document.getElementById("catAddOverlay").classList.remove("show"); }
+function onCatAddPhoto(event){
+  const file=event.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{ const img=new Image(); img.onload=()=>{
+    const max=500; let w=img.width,h=img.height;
+    if(w>max||h>max){ if(w>h){h=Math.round(h*max/w);w=max;}else{w=Math.round(w*max/h);h=max;} }
+    const c=document.createElement("canvas"); c.width=w; c.height=h;
+    const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,w,h); g.drawImage(img,0,0,w,h);
+    catAddImg=c.toDataURL("image/jpeg",0.7);
+    document.getElementById("ca-photo-preview").innerHTML=`<img src="${catAddImg}" alt="">`;
+  }; img.src=e.target.result; };
+  reader.readAsDataURL(file);
+  event.target.value="";
+}
+async function submitCatAdd(){
+  const v=id=>document.getElementById(id).value.trim();
+  let doc;
+  if(catAddKind==="car"){
+    doc={kind:"car", car:v("ca-car"), group:v("ca-group"), code:v("ca-code").toUpperCase(), years:v("ca-years"), engine:v("ca-engine").toUpperCase(), desc:v("ca-desc")};
+    if(!doc.car||!doc.code||!doc.desc){ toast("عبّئ نوع السيارة والرمز والوصف"); return; }
+    if(catCarRows().some(r=>r.car===doc.car&&r.code===doc.code&&r.years===doc.years)){ toast("هذا الرمز موجود في الكتالوج"); return; }
+  }else{
+    doc={kind:"general", cat:v("ca-cat"), name:v("ca-name"), code:v("ca-gcode").toUpperCase(), cars:v("ca-cars")||"جميع سيارات تويوتا", img:catAddImg};
+    if(!doc.cat||!doc.name||!doc.code){ toast("عبّئ الفئة واسم المنتج والرقم"); return; }
+    if(catGenItems().some(it=>catNorm(it.code)===catNorm(doc.code))){ toast("هذا الرقم موجود في الكتالوج"); return; }
+  }
+  const now=Date.now(), id=newReqId();
+  Object.assign(doc,{id, branchId:me.id, status:"pending", t:now, createdAt:now});
+  const btn=document.getElementById("caSubmit"); btn.disabled=true; btn.textContent="جارٍ الإرسال…";
+  try{ await db.collection("catalog_adds").doc(String(id)).set(doc); closeCatAdd(); toast("تم الإرسال — بانتظار اعتماد الإدارة"); }
+  catch(e){ console.error(e); toast(e.code==="permission-denied"?"تعذّر الإرسال: صلاحيات قاعدة البيانات لا تسمح":"تعذّر الإرسال"); }
+  btn.disabled=false; btn.textContent="إرسال للاعتماد";
+}
+const CAT_MGR_TABS=[{k:"pending",label:"بانتظار الاعتماد"},{k:"approved",label:"معتمدة"},{k:"rejected",label:"مرفوضة"}];
+function setMgrCatTab(k){ mgrCatTab=k; renderMgrCatalog(); }
+function catAddCardHTML(a){
+  const st={pending:["tx-pending","بانتظار الاعتماد"],approved:["tx-confirmed","معتمدة ✓"],rejected:["tx-rejected","مرفوضة"]}[a.status]||["",""];
+  const img=a.kind==="general"&&catSafeImg(a.img)?`<img class="ca-thumb" src="${esc(catSafeImg(a.img))}" alt="">`:`<span class="ca-thumb ph">${a.kind==="car"?"🚗":"⚙️"}</span>`;
+  const title=a.kind==="car"?`${esc(a.car)}${a.group?" · "+esc(a.group):""}`:`${esc(a.cat)} · ${esc(a.name)}`;
+  const meta=a.kind==="car"?[a.desc,a.years,a.engine].filter(Boolean).map(esc).join(" · "):esc(a.cars||"");
+  const foot=a.status==="pending"
+    ? `<div class="sup-foot" style="gap:8px"><button class="ca-rej" onclick="decideCatAdd(${a.id},'rejected')">✕ رفض</button><button class="sup-done-btn" onclick="decideCatAdd(${a.id},'approved')">✓ اعتماد</button></div>`
+    : a.status==="approved" ? `<div class="sup-foot"><button class="ca-rej" onclick="removeCatAdd(${a.id})">🗑 حذف من الكتالوج</button></div>` : "";
+  return `<div class="sup-card ${a.status==='pending'?'pending ca-pending':''}">
+    <div class="sup-top">${img}
+      <div style="flex:1;min-width:0"><div class="sup-branch" style="color:#c0392b">${branchName(a.branchId)} · ${timeAgo(a.t)}</div>
+        <div style="font-size:13.5px;font-weight:700">${title}</div>
+        <div class="ca-code">${esc(a.code)}</div><div style="font-size:11.5px;color:var(--muted)">${meta}</div></div>
+      <span class="tx-status ${st[0]}">${st[1]}</span>
+    </div>${a.rejectReason?`<div class="sup-note">سبب الرفض: ${esc(a.rejectReason)}</div>`:""}${foot}
+  </div>`;
+}
+function renderMgrCatalog(){
+  updateMgrAttention();
+  const tabsEl=document.getElementById("mgrCatTabs"), listEl=document.getElementById("mgrCatList"); if(!tabsEl||!listEl) return;
+  tabsEl.innerHTML=CAT_MGR_TABS.map(t=>{ const n=CAT_ADDS.filter(a=>a.status===t.k).length;
+    return `<button class="tab ${mgrCatTab===t.k?'active':''}" onclick="setMgrCatTab('${t.k}')">${t.label}${n?` <span class="cnt">${n}</span>`:''}</button>`; }).join("");
+  const pending=CAT_ADDS.filter(a=>a.status==="pending").length;
+  document.getElementById("catMgrCount").textContent=pending?pending+" بانتظار":"";
+  const rows=CAT_ADDS.filter(a=>a.status===mgrCatTab);
+  listEl.innerHTML=rows.length?rows.map(catAddCardHTML).join("")
+    :`<div class="empty" style="grid-column:1/-1"><div class="ic">📘</div>لا توجد إضافات ${mgrCatTab==="pending"?"بانتظار الاعتماد":"هنا"}</div>`;
+}
+async function decideCatAdd(id,status){
+  let reason="";
+  if(status==="rejected"){ const r=prompt("سبب الرفض (اختياري):",""); if(r===null) return; reason=r.trim(); }
+  try{ await db.collection("catalog_adds").doc(String(id)).update({status, decidedAt:Date.now(), rejectReason:reason}); toast(status==="approved"?"تم الاعتماد — ظهرت في الكتالوج":"تم الرفض"); }
+  catch(e){ console.error(e); toast("تعذّر الحفظ"); }
+}
+async function removeCatAdd(id){
+  if(!confirm("حذف هذه الإضافة من الكتالوج؟")) return;
+  try{ await db.collection("catalog_adds").doc(String(id)).delete(); toast("تم الحذف"); }
+  catch(e){ console.error(e); toast("تعذّر الحذف"); }
 }
 
 boot();
