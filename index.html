@@ -223,7 +223,45 @@
     gap:16px;align-items:start}
   .mgr-body .panel{margin-bottom:0}
   .mgr-body .kpi-panel{grid-column:1/-1}
-  .mgr-body .panel:last-child{grid-column:1/-1}  /* السجل بعرض كامل */
+  .mgr-body .span-all{grid-column:1/-1}
+  .mgr-stats{grid-template-columns:repeat(5,1fr)}
+  .mgr-nav{position:sticky;top:0;z-index:20;display:flex;gap:6px;padding:10px 24px;background:var(--bg);
+    border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+  .mgr-nav::-webkit-scrollbar{display:none}
+  .mgr-nav button{flex:1 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--muted);
+    padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:700;cursor:pointer;white-space:nowrap}
+  .mgr-nav button.active{background:var(--txt);border-color:var(--txt);color:#fff}
+  .nav-badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:9px;background:var(--red);color:#fff;
+    font-size:11px;line-height:18px;margin-inline-start:4px}
+  .nav-badge:empty{display:none}
+  .attn-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .attn{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:right;cursor:pointer;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;font-family:inherit;
+    border-inline-start:4px solid var(--line);transition:.15s}
+  .attn:active{transform:scale(.98)}
+  .attn-ic{font-size:20px}
+  .attn-t{font-size:13.5px;font-weight:600;color:var(--txt)}
+  .attn-t b{font-size:20px;margin-inline-end:3px}
+  .attn-s{font-size:11.5px;color:var(--muted)}
+  .attn.tx.hot{border-inline-start-color:var(--blue)} .attn.tx.hot b{color:var(--blue)}
+  .attn.sup.hot{border-inline-start-color:#7a5cc9} .attn.sup.hot b{color:#7a5cc9}
+  .attn.late.hot{border-inline-start-color:var(--red)} .attn.late.hot b{color:var(--red)}
+  @media(max-width:700px){
+    .mgr-body{grid-template-columns:1fr;padding:14px 16px}
+    .mgr-nav{padding:10px 16px}
+    .attn-row{grid-template-columns:1fr;gap:8px}
+    .attn{flex-direction:row;align-items:center;gap:10px;padding:11px 14px}
+    .attn-s{margin-inline-start:auto}
+    .mgr-stats{grid-template-columns:repeat(6,1fr)}
+    .mgr-stats .stat:nth-child(-n+3){grid-column:span 2}
+    .mgr-stats .stat:nth-child(n+4){grid-column:span 3}
+    .mgr-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+    .mgr-nav button{padding:8px 3px;font-size:12px;white-space:normal;line-height:1.35}
+    .nav-badge{min-width:16px;padding:0 4px;font-size:10px;line-height:16px}
+    .kpi-grid{grid-template-columns:repeat(2,1fr)}
+    .kpi:nth-child(2){border-inline-end:none}
+    .kpi:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  }
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
     padding:16px;margin-bottom:14px}
   .panel h3{font-size:15px;font-weight:700;margin-bottom:4px}
@@ -491,8 +529,6 @@
     border-radius:11px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
   .tx-bar .newreq-btn{background:var(--blue)}
   #txOverlay .btn-send{background:var(--blue)}
-  #acc .stat.mine b{color:var(--blue)}
-  .acc-toolbar{padding:8px 24px 0;display:flex;justify-content:flex-end}
   .photo-preview{margin-top:10px}
   .photo-preview img{max-width:100%;max-height:200px;border-radius:10px;border:1px solid var(--line)}
   .img-viewer-inner{background:var(--panel);border-radius:14px;padding:12px;max-width:92vw;max-height:90vh;overflow:auto}
@@ -527,7 +563,6 @@
     <div class="login-err" id="loginErr"></div>
   </div>
   <button class="mgr-link" onclick="openMgrLogin()">دخول الإدارة ←</button>
-  <button class="mgr-link" onclick="openAccLogin()">دخول المحاسب (الحوالات) ←</button>
 </div>
 
 <!-- شاشة دخول المدير -->
@@ -597,7 +632,7 @@
   <div id="txView" class="hidden">
     <div class="tx-bar">
       <button class="newreq-btn" onclick="openTxForm()">➕ حوالة جديدة</button>
-      <span class="tx-hint">ارفع الحوالة هنا بدل الاتصال — المحاسب يؤكّدها ويصلك الرد.</span>
+      <span class="tx-hint">ارفع الحوالة هنا بدل الاتصال — الإدارة تؤكّدها ويصلك الرد.</span>
     </div>
     <div class="list" id="txList"></div>
   </div>
@@ -650,7 +685,7 @@
   <button class="notif-x" onclick="event.stopPropagation();hideNotif()">×</button>
 </div>
 
-<!-- ===== لوحة المدير ===== -->
+<!-- ===== لوحة الإدارة ===== -->
 <div class="wrap hidden" id="mgr">
   <header>
     <div class="hd-top">
@@ -660,10 +695,11 @@
       <img src="assets/logo.png" alt="القرعاوي" class="hd-logo hd-logo-center">
       <div class="hd-actions">
         <span class="conn-dot loading" id="connDotMgr" title="حالة الاتصال بالسحابة">جاري الاتصال…</span>
+        <button class="icon-btn" id="notifBtnMgr" onclick="enableNotifications()" title="فعّل إشعارات الحوالات">🔕</button>
         <button class="logout" onclick="mgrLogout()">خروج</button>
       </div>
     </div>
-    <div class="stats" style="grid-template-columns:repeat(5,1fr)">
+    <div class="stats mgr-stats">
       <div class="stat"><b id="m-open">0</b><span>طلبات مفتوحة</span></div>
       <div class="stat late-stat"><b id="m-late">0</b><span>طلبات متأخرة</span></div>
       <div class="stat"><b id="m-pending">0</b><span>قطع بانتظار رد</span></div>
@@ -672,22 +708,22 @@
     </div>
   </header>
 
-  <div class="mgr-body">
-    <!-- الحوالات البنكية (تأكيد/رفض من الإدارة) -->
-    <section class="panel kpi-panel">
-      <div class="log-header">
-        <h3>الحوالات البنكية <span id="mgrTxCount" class="chip-count" style="background:var(--blue)"></span></h3>
-        <button class="export-btn" onclick="exportTransfersExcel()">⬇ تصدير Excel</button>
-      </div>
-      <div class="perf-sub">حوالات الفروع — أكّدها أو ارفضها بعد التحقق من الحساب البنكي</div>
-      <div class="tabs" id="mgrTxTabs"></div>
-      <div id="mgrTxList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
-    </section>
-    <!-- طلبات المستلزمات من الفروع -->
-    <section class="panel kpi-panel">
-      <h3>طلبات المستلزمات <span id="supMgrCount" class="chip-count"></span></h3>
-      <div class="perf-sub">المستلزمات التي طلبتها الفروع من الإدارة</div>
-      <div id="mgrSuppliesList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
+  <nav class="mgr-nav" id="mgrNav">
+    <button data-pane="overview" onclick="setMgrPane('overview')">📊 نظرة عامة</button>
+    <button data-pane="transfers" onclick="setMgrPane('transfers')">💳 الحوالات <span class="nav-badge" id="navTxBadge"></span></button>
+    <button data-pane="supplies" onclick="setMgrPane('supplies')">🧰 المستلزمات <span class="nav-badge" id="navSupBadge"></span></button>
+    <button data-pane="log" onclick="setMgrPane('log')">📋 سجل الطلبات</button>
+  </nav>
+
+  <!-- نظرة عامة -->
+  <div class="mgr-body mgr-pane" id="pane-overview">
+    <section class="attn-row">
+      <button class="attn tx" onclick="setMgrPane('transfers')"><span class="attn-ic">💳</span>
+        <span class="attn-t"><b id="attnTx">0</b> حوالة بانتظار التأكيد</span><span class="attn-s" id="attnTxSum"></span></button>
+      <button class="attn sup" onclick="setMgrPane('supplies')"><span class="attn-ic">🧰</span>
+        <span class="attn-t"><b id="attnSup">0</b> طلب مستلزمات جديد</span><span class="attn-s">اضغط للعرض</span></button>
+      <button class="attn late" onclick="showLateRequests()"><span class="attn-ic">⏰</span>
+        <span class="attn-t"><b id="attnLate">0</b> طلب متأخر</span><span class="attn-s">بدون رد لأكثر من 24 ساعة</span></button>
     </section>
     <!-- مؤشرات إضافية -->
     <section class="panel kpi-panel">
@@ -698,43 +734,62 @@
         <div class="kpi"><b id="k-avgresp">—</b><span>متوسط زمن الرد</span></div>
       </div>
     </section>
-
     <!-- عدد الطلبات يومياً -->
     <section class="panel">
       <h3>عدد الطلبات يومياً</h3>
       <div class="perf-sub">آخر 7 أيام</div>
       <div id="dailyChart" class="daily"></div>
     </section>
-
     <!-- أكثر القطع طلباً -->
     <section class="panel">
       <h3>أكثر القطع طلباً</h3>
       <div id="topParts" class="bars"></div>
     </section>
-
     <!-- أكثر الفروع طلباً للقطع -->
     <section class="panel">
       <h3>أكثر الفروع طلباً</h3>
       <div class="perf-sub">الفروع التي ترفع أكثر الطلبات</div>
       <div id="topAskers" class="bars"></div>
     </section>
-
     <!-- أكثر الفروع طُلب منها -->
     <section class="panel">
       <h3>أكثر الفروع طُلب منها</h3>
       <div class="perf-sub">الفروع التي يعتمد عليها الباقون</div>
       <div id="topAsked" class="bars"></div>
     </section>
-
     <!-- أداء الفروع -->
-    <section class="panel">
+    <section class="panel span-all">
       <h3>أداء الفروع في الرد</h3>
       <div class="perf-sub">مرتّبة من الأسرع للأبطأ (متوسط زمن الرد على القطع المطلوبة منها)</div>
       <div id="branchPerf" class="perf"></div>
     </section>
+  </div>
 
-    <!-- السجل الكامل -->
-    <section class="panel">
+  <!-- الحوالات -->
+  <div class="mgr-body mgr-pane hidden" id="pane-transfers">
+    <section class="panel span-all">
+      <div class="log-header">
+        <h3>الحوالات البنكية <span id="mgrTxCount" class="chip-count" style="background:var(--blue)"></span></h3>
+        <button class="export-btn" onclick="exportTransfersExcel()">⬇ تصدير Excel</button>
+      </div>
+      <div class="perf-sub">حوالات الفروع — أكّدها أو ارفضها بعد التحقق من الحساب البنكي</div>
+      <div class="tabs" id="mgrTxTabs" style="padding:0 0 4px"></div>
+      <div id="mgrTxList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
+    </section>
+  </div>
+
+  <!-- المستلزمات -->
+  <div class="mgr-body mgr-pane hidden" id="pane-supplies">
+    <section class="panel span-all">
+      <h3>طلبات المستلزمات <span id="supMgrCount" class="chip-count"></span></h3>
+      <div class="perf-sub">المستلزمات التي طلبتها الفروع من الإدارة</div>
+      <div id="mgrSuppliesList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
+    </section>
+  </div>
+
+  <!-- سجل الطلبات -->
+  <div class="mgr-body mgr-pane hidden" id="pane-log">
+    <section class="panel span-all">
       <div class="log-header">
         <h3>سجل الطلبات</h3>
         <div style="display:flex;gap:8px">
@@ -746,6 +801,7 @@
         <select id="flt-status" onchange="renderMgr()">
           <option value="all">كل الحالات</option>
           <option value="open">مفتوحة</option>
+          <option value="late">متأخرة</option>
           <option value="done">منتهية</option>
         </select>
         <select id="flt-branch" onchange="renderMgr()"></select>
@@ -759,32 +815,6 @@
       <div id="mgrLog" class="mgr-log"></div>
     </section>
   </div>
-</div>
-
-<!-- ===== لوحة المحاسب (الحوالات) ===== -->
-<div class="wrap hidden" id="acc">
-  <header>
-    <div class="hd-top">
-      <div class="brand"><span class="dot"></span>
-        <div><h1>لوحة المحاسب</h1><div class="bname">تأكيد الحوالات البنكية</div></div>
-      </div>
-      <img src="assets/logo.png" alt="القرعاوي" class="hd-logo hd-logo-center">
-      <div class="hd-actions">
-        <span class="conn-dot loading" id="connDotAcc" title="حالة الاتصال">جارٍ الاتصال…</span>
-        <button class="icon-btn" id="notifBtnAcc" onclick="enableNotifications()" title="فعّل إشعارات الجوال">🔕</button>
-        <button class="logout" onclick="accLogout()">خروج</button>
-      </div>
-    </div>
-    <div class="stats" style="grid-template-columns:repeat(4,1fr)">
-      <div class="stat mine"><b id="a-pending">0</b><span>بانتظار التأكيد</span></div>
-      <div class="stat"><b id="a-today">0</b><span>مؤكدة اليوم</span></div>
-      <div class="stat"><b id="a-amount">0</b><span>مجموع المعلّق (ريال)</span></div>
-      <div class="stat"><b id="a-total">0</b><span>إجمالي الحوالات</span></div>
-    </div>
-  </header>
-  <div class="tabs" id="accTabs"></div>
-  <div class="acc-toolbar"><button class="export-btn" onclick="exportTransfersExcel()">⬇ تصدير Excel</button></div>
-  <div class="list" id="accList"></div>
 </div>
 
 <!-- نموذج حوالة جديدة -->
@@ -938,7 +968,7 @@ let firestoreReady = false;
 
 // مؤشر حالة الاتصال
 function setConn(state, text){
-  ["connDot","connDotMgr","connDotAcc"].forEach(id=>{
+  ["connDot","connDotMgr"].forEach(id=>{
     const el=document.getElementById(id);
     if(!el)return;
     el.className="conn-dot "+state;
@@ -950,7 +980,7 @@ window.addEventListener("offline",()=>setConn("offline","غير متصل"));
 
 /* ===================== إشعارات الجوال (Web Push) ===================== */
 const VAPID_PUBLIC="BKBvoud5igKzASsCvZiEGWDoaGuolAO8U67975sJIMzAYbR0SexpoHVpsEd79Hl2sZmhV3hci7L6A53I6Nd6tTA";
-let currentSubId=null;  // معرّف الاشتراك بالإشعارات (رقم الفرع، أو 0 للمحاسب)
+let currentSubId=null;  // معرّف الاشتراك بالإشعارات (رقم الفرع، أو 0 للإدارة — إشعارات الحوالات)
 function urlB64ToUint8(base64){
   const pad="=".repeat((4-base64.length%4)%4);
   const b64=(base64+pad).replace(/-/g,"+").replace(/_/g,"/");
@@ -988,7 +1018,7 @@ async function enableNotifications(){
 }
 function refreshNotifBtn(){
   const on=("Notification" in window)&&Notification.permission==="granted";
-  ["notifBtn","notifBtnAcc"].forEach(id=>{
+  ["notifBtn","notifBtnMgr"].forEach(id=>{
     const b=document.getElementById(id); if(!b) return;
     b.textContent=on?"📲":"🔕";
     b.title=on?"إشعارات الجوال مفعّلة":"فعّل إشعارات الجوال";
@@ -1050,7 +1080,7 @@ function startListener(){
 auth.onAuthStateChanged(async user=>{
   if(!user){
     // مسجّل خروج — اعرض شاشة الدخول
-    ["app","mgr","acc","fab","mgrLogin"].forEach(id=>{
+    ["app","mgr","fab","mgrLogin"].forEach(id=>{
       const el=document.getElementById(id); if(el) el.classList.add("hidden");
     });
     const lg=document.getElementById("login"); if(lg) lg.classList.remove("hidden");
@@ -1068,7 +1098,8 @@ auth.onAuthStateChanged(async user=>{
   if(email==="admin@qrawi.app"){
     startListener(); startTxListener(); startSupListener(); enterMgr();
   }else if(email==="accountant@qrawi.app"){
-    startTxListener(); enterAccountant();
+    // حساب المحاسب أُلغي — الحوالات صارت من لوحة الإدارة
+    toast("لوحة المحاسب أُلغيت — الحوالات صارت من لوحة الإدارة"); auth.signOut();
   }else{
     const m=email.match(/^b(\d+)@qrawi\.app$/);
     if(m){
@@ -1129,7 +1160,6 @@ function enter(b){
   $("#login").classList.add("hidden");
   $("#mgr").classList.add("hidden");
   $("#mgrLogin").classList.add("hidden");
-  $("#acc").classList.add("hidden");
   $("#app").classList.remove("hidden");
   $("#fab").classList.remove("hidden");
   $("#hdBranch").textContent=b.name;
@@ -1401,13 +1431,6 @@ function openMgrLogin(){
   $("#login").classList.add("hidden");$("#mgrLogin").classList.remove("hidden");
   mPinBuf="";mRenderDots();$("#mLoginErr").textContent="";
 }
-function openAccLogin(){
-  staffEmail="accountant@qrawi.app";
-  $("#mgrLoginTitle").textContent="لوحة المحاسب";
-  $("#mgrLoginSub").textContent="أدخل رمز المحاسب";
-  $("#login").classList.add("hidden");$("#mgrLogin").classList.remove("hidden");
-  mPinBuf="";mRenderDots();$("#mLoginErr").textContent="";
-}
 function closeMgrLogin(){$("#mgrLogin").classList.add("hidden");$("#login").classList.remove("hidden");}
 function mRenderDots(){$("#mPinDots").innerHTML=[0,1,2,3,4,5].map(i=>
   `<div class="pin-dot ${i<mPinBuf.length?'filled':''}"></div>`).join("");}
@@ -1437,10 +1460,36 @@ function enterMgr(){
   renderMgr();
   renderMgrTransfers();
   renderMgrSupplies();
+  let pane="overview"; try{ pane=localStorage.getItem("mgrPane")||"overview"; }catch(e){}
+  setMgrPane(pane);
+  // الإدارة تستقبل إشعارات الحوالات (كانت للمحاسب سابقاً)
+  currentSubId=0; refreshNotifBtn(); subscribePush();
 }
 function mgrLogout(){ auth.signOut(); }  // onAuthStateChanged يعيد شاشة الدخول
 
-/* الحوالات داخل لوحة الإدارة (نفس منطق المحاسب) */
+const MGR_PANES=["overview","transfers","supplies","log"];
+function setMgrPane(k){
+  if(!MGR_PANES.includes(k)) k="overview";
+  MGR_PANES.forEach(p=>document.getElementById("pane-"+p).classList.toggle("hidden",p!==k));
+  document.querySelectorAll("#mgrNav button").forEach(b=>b.classList.toggle("active",b.dataset.pane===k));
+  try{ localStorage.setItem("mgrPane",k); }catch(e){}
+  window.scrollTo({top:0});
+}
+function showLateRequests(){ $("#flt-status").value="late"; renderMgr(); setMgrPane("log"); }
+// بطاقات «تحتاج انتباهك» + شارات التبويبات
+function updateMgrAttention(){
+  const txP=TRANSFERS.filter(t=>t.status==="pending");
+  const supP=SUPPLIES.filter(x=>x.status!=="done").length;
+  const late=REQS.filter(isLateReq).length;
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  set("attnTx",txP.length); set("attnSup",supP); set("attnLate",late);
+  set("attnTxSum", txP.length ? fmtAmount(txP.reduce((a,t)=>a+(Number(t.amount)||0),0))+" ريال" : "لا يوجد شيء معلّق");
+  set("navTxBadge", txP.length||""); set("navSupBadge", supP||"");
+  const hot=(sel,on)=>{ const el=document.querySelector(sel); if(el) el.classList.toggle("hot",on>0); };
+  hot(".attn.tx",txP.length); hot(".attn.sup",supP); hot(".attn.late",late);
+}
+
+/* الحوالات داخل لوحة الإدارة */
 let mgrTxTab="pending";
 function setMgrTxTab(k){ mgrTxTab=k; renderMgrTransfers(); }
 function renderMgrTransfers(){
@@ -1452,6 +1501,7 @@ function renderMgrTransfers(){
   }).join("");
   const pending=TRANSFERS.filter(t=>t.status==="pending").length;
   const cnt=document.getElementById("mgrTxCount"); if(cnt) cnt.textContent = pending?pending+" بانتظار":"";
+  updateMgrAttention();
   const rows=filterTx(mgrTxTab);
   listEl.innerHTML=rows.length?rows.map(t=>txCardHTML(t,true)).join("")
     :`<div class="empty" style="grid-column:1/-1"><div class="ic">💳</div>لا توجد حوالات ${mgrTxTab==='pending'?'بانتظار التأكيد':''}</div>`;
@@ -1470,6 +1520,7 @@ function renderMgr(){
   // أرقام عامة
   $("#m-open").textContent=REQS.filter(r=>reqState(r)!=="done").length;
   $("#m-late").textContent=REQS.filter(isLateReq).length;
+  updateMgrAttention();
   $("#m-pending").textContent=allItems.filter(i=>i.status==="pending").length;
   $("#m-ready").textContent=allItems.filter(i=>i.status==="ready").length;
   $("#m-done").textContent=REQS.filter(r=>reqState(r)==="done").length;
@@ -1545,6 +1596,7 @@ function renderMgr(){
   let log=[...REQS].sort((a,b)=>b.t-a.t);
   if(fS==="open")log=log.filter(r=>reqState(r)!=="done");
   if(fS==="done")log=log.filter(r=>reqState(r)==="done");
+  if(fS==="late")log=log.filter(isLateReq);
   if(fB!=="all")log=log.filter(r=>r.from==+fB||r.to==+fB);
   if(fD!=="all"){const cut=Date.now()-(+fD)*86400000;log=log.filter(r=>r.t>=cut);}
 
@@ -1580,6 +1632,7 @@ function exportExcel(){
   let log=[...REQS].sort((a,b)=>b.t-a.t);
   if(fS==="open")log=log.filter(r=>reqState(r)!=="done");
   if(fS==="done")log=log.filter(r=>reqState(r)==="done");
+  if(fS==="late")log=log.filter(isLateReq);
   if(fB!=="all")log=log.filter(r=>r.from==+fB||r.to==+fB);
   if(fD!=="all"){const cut=Date.now()-(+fD)*86400000;log=log.filter(r=>r.t>=cut);}
 
@@ -1726,7 +1779,6 @@ const BANKS=["الراجحي","الأهلي (SNB)","الرياض","البلاد"
   "الفرنسي","ساب (SABB)","الخليج الدولي (gib)","الأول (SAB)","stc pay","urpay","أخرى"];
 let TRANSFERS=[], branchMode="parts", txPhotoData=null;
 let txAttached=false, txRetries=0, txUnsub=null;
-let accTab="pending";
 const TX_STATUS={pending:{t:"بانتظار التأكيد",c:"tx-pending"},confirmed:{t:"مؤكدة ✓",c:"tx-confirmed"},rejected:{t:"مرفوضة",c:"tx-rejected"}};
 const ACC_TABS=[{k:"pending",label:"بانتظار التأكيد"},{k:"confirmed",label:"مؤكدة"},{k:"rejected",label:"مرفوضة"},{k:"all",label:"الكل"}];
 
@@ -1741,8 +1793,6 @@ function startTxListener(){
   txUnsub=db.collection("transfers").where("t",">=",cutoff).onSnapshot(snap=>{
     txRetries=0;
     TRANSFERS=snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
-    const acc=document.getElementById("acc");
-    if(acc && !acc.classList.contains("hidden")) renderAcc();
     const mgr=document.getElementById("mgr");
     if(mgr && !mgr.classList.contains("hidden")) renderMgrTransfers();
     const app=document.getElementById("app");
@@ -1951,6 +2001,7 @@ function renderMgrSupplies(){
   const pending=SUPPLIES.filter(s=>s.status!=="done");
   const cnt=document.getElementById("supMgrCount");
   if(cnt) cnt.textContent = pending.length ? pending.length+" بانتظار" : "";
+  updateMgrAttention();
   const list=[...SUPPLIES].sort((a,b)=>{
     const ap=a.status!=="done"?0:1, bp=b.status!=="done"?0:1;
     return ap-bp || b.t-a.t;
@@ -2113,7 +2164,7 @@ async function submitTransfer(){
   try{
     if(txPhotoData) await saveTransferImage(id, txPhotoData);
     await saveTransferToCloud(tx);
-    closeTxForm(); toast("تم رفع الحوالة — بانتظار تأكيد المحاسب");
+    closeTxForm(); toast("تم رفع الحوالة — بانتظار تأكيد الإدارة");
     setBranchMode("transfers");
   }catch(e){ /* رسالة الخطأ عُرضت */ }
   btn.disabled=false; btn.textContent="رفع الحوالة";
@@ -2170,43 +2221,11 @@ function renderBranchTransfers(){
     : `<div class="empty"><div class="ic">💳</div>لا توجد حوالات بعد. اضغط «حوالة جديدة» لرفع أول حوالة.</div>`;
 }
 
-// ---- لوحة المحاسب ----
-function enterAccountant(){
-  $("#login").classList.add("hidden");
-  $("#mgrLogin").classList.add("hidden");
-  $("#app").classList.add("hidden");
-  $("#mgr").classList.add("hidden");
-  $("#fab").classList.add("hidden");
-  $("#acc").classList.remove("hidden");
-  currentSubId=0;
-  refreshNotifBtn();
-  subscribePush();
-  renderAcc();
-}
-function accLogout(){ auth.signOut(); }
-function setAccTab(k){ accTab=k; renderAcc(); }
+
 function filterTx(k){
   const list=[...TRANSFERS].sort((a,b)=>b.t-a.t);
   if(k==="all")return list;
   return list.filter(t=>t.status===k);
-}
-function renderAcc(){
-  document.getElementById("accTabs").innerHTML=ACC_TABS.map(t=>{
-    const n=filterTx(t.k).length;
-    return `<button class="tab ${accTab===t.k?'active':''}" onclick="setAccTab('${t.k}')">${t.label}${n?` <span class="cnt">${n}</span>`:''}</button>`;
-  }).join("");
-  const pending=TRANSFERS.filter(t=>t.status==="pending");
-  const startDay=new Date(); startDay.setHours(0,0,0,0);
-  const todayConf=TRANSFERS.filter(t=>t.status==="confirmed"&&(t.decidedAt||0)>=startDay.getTime()).length;
-  const pendingSum=pending.reduce((s,t)=>s+(Number(t.amount)||0),0);
-  document.getElementById("a-pending").textContent=pending.length;
-  document.getElementById("a-today").textContent=todayConf;
-  document.getElementById("a-amount").textContent=fmtAmount(pendingSum);
-  document.getElementById("a-total").textContent=TRANSFERS.length;
-  const rows=filterTx(accTab);
-  const el=document.getElementById("accList");
-  el.innerHTML = rows.length ? rows.map(t=>txCardHTML(t,true)).join("")
-    : `<div class="empty"><div class="ic">💳</div>لا توجد حوالات ${accTab==="pending"?"بانتظار التأكيد":"في هذا القسم"}</div>`;
 }
 function confirmTransfer(id){ if(confirm("تأكيد استلام هذه الحوالة في الحساب البنكي؟")) setTransferStatus(id,"confirmed"); }
 function rejectTransfer(id){ const r=prompt("سبب الرفض (اختياري):",""); if(r===null)return; setTransferStatus(id,"rejected",r.trim()); }
@@ -2214,7 +2233,7 @@ function rejectTransfer(id){ const r=prompt("سبب الرفض (اختياري):
 // تصدير الحوالات (حسب القسم المعروض) إلى Excel/CSV عربي
 function exportTransfersExcel(){
   const statusAr={pending:"بانتظار التأكيد",confirmed:"مؤكدة",rejected:"مرفوضة"};
-  const list=filterTx(accTab);
+  const list=filterTx(mgrTxTab);
   const rows=[["رقم الحوالة","التاريخ","الفرع","المبلغ","البنك","رقم العملية","رقم الفاتورة","المحوِّل","الحالة","وقت التأكيد/الرفض","سبب الرفض","ملاحظة"]];
   list.forEach(t=>{
     rows.push([
