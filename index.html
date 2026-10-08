@@ -1257,7 +1257,7 @@ auth.onAuthStateChanged(async user=>{
       const el=document.getElementById(id); if(el) el.classList.add("hidden");
     });
     const lg=document.getElementById("login"); if(lg) lg.classList.remove("hidden");
-    me=null; currentSubId=null; pinBuf=""; mPinBuf=""; IS_ADMIN=false; setAdminName("");
+    me=null; currentSubId=null; pinBuf=""; mPinBuf=""; IS_ADMIN=false; MY_BRANCH_ID=null; setAdminName("");
     document.getElementById("adminNameOverlay").classList.remove("show");
     listenerAttached=false; snapRetries=0; if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; } clearTimeout(midnightTimer);
     txAttached=false; txRetries=0; if(txUnsub){ try{txUnsub();}catch(e){} txUnsub=null; } TRANSFERS=[];
@@ -1284,7 +1284,8 @@ auth.onAuthStateChanged(async user=>{
   }else{
     const m=email.match(/^b(\d+)@qrawi\.app$/);
     if(m){
-      const b=BRANCHES.find(x=>x.id===parseInt(m[1],10));
+      MY_BRANCH_ID=parseInt(m[1],10);
+      const b=BRANCHES.find(x=>x.id===MY_BRANCH_ID);
       startListener(); startTxListener(); startSupListener(); startCatListener();
       if(b) enter(b);
     }
@@ -1297,6 +1298,12 @@ function saveData(){ /* no-op: الحفظ يتم لكل طلب على حدة */ 
 const $=s=>document.querySelector(s);
 let me=null, activeTab="all", pinBuf="";
 let IS_ADMIN=false;  // دخول الإدارة: صلاحيات كاملة (حذف + واجهة الفروع)
+let MY_BRANCH_ID=null;  // رقم الفرع المسجّل دخوله — الفرع يحمّل حوالاته ومستلزماته فقط
+// استعلام الفرع: حقه فقط (بدون حد زمني — ما يحتاج فهرس مركّب). الإدارة: الكل لآخر READ_WINDOW_DAYS يوم
+function scopedQuery(col){
+  if(IS_ADMIN || MY_BRANCH_ID===null) return db.collection(col).where("t",">=",Date.now()-READ_WINDOW_DAYS*86400000);
+  return db.collection(col).where("branchId","==",MY_BRANCH_ID);
+}
 // اسم الشخص اللي دخل الإدارة — إلزامي، ويُسجَّل مع كل اعتماد وتعديل وحذف
 let ADMIN_NAME=(()=>{ try{ return localStorage.getItem("adminName")||""; }catch(e){ return ""; } })();
 function validName(v){ v=String(v||"").trim(); return v.length>=2 && v.length<=40; }
@@ -2057,8 +2064,7 @@ function fmtAmount(n){ return (Number(n)||0).toLocaleString("en-US",{minimumFrac
 function startTxListener(){
   if(txAttached)return;
   txAttached=true;
-  const cutoff=Date.now()-READ_WINDOW_DAYS*86400000;
-  txUnsub=db.collection("transfers").where("t",">=",cutoff).onSnapshot(snap=>{
+  txUnsub=scopedQuery("transfers").onSnapshot(snap=>{
     txRetries=0;
     TRANSFERS=snap.docs.map(d=>cleanNums(d.data())).sort((a,b)=>b.t-a.t);
     const mgr=document.getElementById("mgr");
@@ -2260,8 +2266,7 @@ document.addEventListener("click",e=>{
 let SUPPLIES=[], supAttached=false, supRetries=0, supUnsub=null;
 function startSupListener(){
   if(supAttached) return; supAttached=true;
-  const cutoff=Date.now()-READ_WINDOW_DAYS*86400000;
-  supUnsub=db.collection("supplies").where("t",">=",cutoff).onSnapshot(snap=>{
+  supUnsub=scopedQuery("supplies").onSnapshot(snap=>{
     supRetries=0;
     SUPPLIES=snap.docs.map(d=>cleanSup(d.data())).sort((a,b)=>b.t-a.t);
     const appEl=document.getElementById("app"), mgrEl=document.getElementById("mgr");
