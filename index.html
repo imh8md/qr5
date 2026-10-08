@@ -261,7 +261,6 @@
     .mgr-body .kpi-grid{grid-template-columns:repeat(2,1fr)}
     .mgr-body .kpi:nth-child(2){border-inline-end:none}
     .mgr-body .kpi:nth-child(-n+2){border-bottom:1px solid var(--line)}
-    #mgr .bname{display:none}
   }
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
     padding:16px;margin-bottom:14px}
@@ -493,6 +492,7 @@
     .search-bar input{max-width:100%;width:640px}
     .arrival-form{margin-inline:auto}
     .tx-bar,.sup-bar{justify-content:center}
+    #partsView .tabs{justify-content:center}
   }
   .tx-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 24px 0}
   .tx-hint{font-size:12px;color:var(--muted)}
@@ -529,6 +529,11 @@
   .photo-btn{width:100%;background:var(--soft);border:1px dashed var(--line);color:var(--blue);
     border-radius:11px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
   .tx-bar .newreq-btn{background:var(--blue)}
+  .parts-bar .newreq-btn{background:var(--gold)}
+  /* الجوال: مؤشر الاتصال نقطة فقط عشان ما يغطي اسم الفرع */
+  @media(max-width:480px){
+    .conn-dot{font-size:0;gap:0;padding:9px}
+  }
   #txOverlay .btn-send{background:var(--blue)}
   .photo-preview{margin-top:10px}
   .photo-preview img{max-width:100%;max-height:200px;border-radius:10px;border:1px solid var(--line)}
@@ -603,7 +608,6 @@
       <img src="assets/logo.png" alt="القرعاوي" class="hd-logo hd-logo-center">
       <div class="hd-actions">
         <span class="conn-dot loading" id="connDot" title="حالة الاتصال بالسحابة">جاري الاتصال…</span>
-        <button class="newreq-btn" id="hdNewReq" onclick="openSheet()">+ طلب قطع</button>
         <button class="icon-btn" id="notifBtn" onclick="enableNotifications()" title="فعّل إشعارات الجوال">🔕</button>
         <button class="icon-btn" id="soundBtn" onclick="toggleSound()" title="تنبيه صوتي">🔔</button>
         <button class="logout" onclick="logout()">خروج</button>
@@ -624,6 +628,10 @@
     <button class="mode-btn" id="mode-catalog" onclick="setBranchMode('catalog')">📘 الكتالوج</button>
   </div>
   <div id="partsView">
+    <div class="tx-bar parts-bar">
+      <button class="newreq-btn" onclick="openSheet()">➕ طلب قطع جديد</button>
+      <span class="tx-hint">اطلب قطعة من فرع آخر — يوصله تنبيه ويرد عليك بالتوفّر.</span>
+    </div>
     <div class="tabs" id="tabs"></div>
     <div class="search-bar">
       <input id="searchBox" placeholder="🔍 بحث برقم القطعة أو الاسم…" oninput="render()">
@@ -1818,7 +1826,6 @@ function setBranchMode(m){
   document.getElementById("suppliesView").classList.toggle("hidden",m!=="supplies");
   document.getElementById("mode-catalog").classList.toggle("active",m==="catalog");
   document.getElementById("catalogView").classList.toggle("hidden",m!=="catalog");
-  const nr=document.getElementById("hdNewReq"); if(nr) nr.style.display=(m==="parts")?"":"none";
   const fab=document.getElementById("fab"); if(fab) fab.style.display=(m==="parts")?"":"none";
   if(m==="transfers") renderBranchTransfers();
   if(m==="arrival") initArrivalForm();
