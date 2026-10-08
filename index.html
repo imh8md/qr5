@@ -458,6 +458,7 @@
   .sup-card>.tx-del~.sup-top{padding-inline-start:52px}
   .q-new{background:#fbeae8;color:#c0392b}
   .sup-card.pending.q-pending{border-color:#c0392b;box-shadow:0 0 0 1px #fbeae8}
+  .q-no{display:inline-block;background:#c0392b;color:#fff;border-radius:7px;padding:0 7px;font-size:13px;margin-inline-end:4px}
   .q-price-area{padding:4px 15px 12px}
   .q-head,.q-row{display:grid;grid-template-columns:1fr 54px 86px 28px;gap:6px;align-items:center}
   .q-head{font-size:11px;color:var(--muted);font-weight:700;padding:0 2px 4px}
@@ -2862,7 +2863,7 @@ function startQuoteListener(){
       if(q.priced&&Array.isArray(q.priced.lines)) q.priced={vatIncl:!!q.priced.vatIncl,
         lines:q.priced.lines.map(l=>({t:String(l.t??""),q:num(l.q)||1,p:l.p===""||l.p==null?"":num(l.p)}))};
       else delete q.priced;
-      ["km","sub","vat","total","repliedAt"].forEach(k=>{ if(k in q) q[k]=num(q[k]); });
+      ["km","sub","vat","total","repliedAt","no"].forEach(k=>{ if(k in q) q[k]=num(q[k]); });
       return q; }).sort((a,b)=>b.t-a.t);
     // تنبيه داخل التطبيق لطلب تسعيرة جديد وصل الحين
     const ids=new Set(QUOTES.map(q=>q.id));
@@ -2884,6 +2885,8 @@ function updateQuoteBadges(){
   const all=QUOTES.filter(q=>q.status==="new").length;
   const nb=document.getElementById("navQuoteBadge"); if(nb) nb.textContent=all||"";
 }
+// رقم الطلب التسلسلي (الطلبات القديمة قبل العدّاد تاخذ آخر 6 أرقام من المعرّف)
+function quoteNo(q){ return q.no ? String(q.no) : String(q.id).slice(-6); }
 function quoteLink(){ return location.origin+location.pathname.replace(/[^/]*$/,"")+"quote.html"; }
 function copyQuoteLink(){ catCopy(quoteLink()); }
 function waPhone(p){ return String(p||"").replace(/[^0-9]/g,"").replace(/^0/,"966"); }
@@ -2913,7 +2916,7 @@ function qCalc(d){
   return {priced, sub:Math.round(sub*100)/100, vat:Math.round(vat*100)/100, total:Math.round((sub+vat)*100)/100};
 }
 function quoteMsg(q,d,c){
-  const no=String(q.id).slice(-6), br=branchName(q.branchId);
+  const no=quoteNo(q), br=branchName(q.branchId);
   const lines=d.lines.filter(l=>l.t.trim()).map(l=>{
     const has=l.p!=="" && !isNaN(+l.p), qn=+l.q||1;
     return `• ${l.t.trim()}${qn>1?" × "+qn:""}: `+(has?`${fmtAmount((+l.p)*qn)} ر.س${qn>1?` (الحبة ${fmtAmount(+l.p)})`:""}`:"غير متوفر حالياً");
@@ -2934,7 +2937,7 @@ async function replyQuote(id){
   try{
     await db.collection("quotes").doc(String(id)).update({status:"replied",repliedAt:Date.now(),repliedBy:by,priced,sub:c.sub,vat:c.vat,total:c.total});
     delete QDRAFT[id];
-    logActivity("تسعير ورد على طلب تسعيرة", `${q.phone} · ${q.make} ${q.model} · ${c.priced.length?fmtAmount(c.total)+" ر.س":"غير متوفر"} · ${branchName(q.branchId)}`);
+    logActivity("تسعير ورد على طلب تسعيرة", `#${quoteNo(q)} · ${q.phone} · ${q.make} ${q.model} · ${c.priced.length?fmtAmount(c.total)+" ر.س":"غير متوفر"} · ${branchName(q.branchId)}`);
   }catch(e){ console.error(e); toast("انفتح الواتساب، لكن تعذّر حفظ الأسعار"); }
 }
 function qLineHTML(q,l,i){
@@ -2956,13 +2959,13 @@ async function reopenQuote(id){
 async function reassignQuote(id,branchId){
   const q=QUOTES.find(x=>x.id===id); if(!q||+branchId===q.branchId) return;
   try{ await db.collection("quotes").doc(String(id)).update({branchId:+branchId, notified:false, status:"new"});
-    logActivity("تحويل طلب تسعيرة", `${q.phone} · من ${branchName(q.branchId)} إلى ${branchName(+branchId)}`); toast("تم تحويل الطلب"); }
+    logActivity("تحويل طلب تسعيرة", `#${quoteNo(q)} · ${q.phone} · من ${branchName(q.branchId)} إلى ${branchName(+branchId)}`); toast("تم تحويل الطلب"); }
   catch(e){ console.error(e); toast("تعذّر التحويل"); }
 }
 async function deleteQuote(id){
   const q=QUOTES.find(x=>x.id===id); if(!q||!confirm("حذف طلب التسعيرة؟")) return;
   try{ await db.collection("quotes").doc(String(id)).delete(); toast("تم الحذف");
-    logActivity("حذف طلب تسعيرة", `${q.phone} · ${q.make} ${q.model} · ${branchName(q.branchId)}`); }
+    logActivity("حذف طلب تسعيرة", `#${quoteNo(q)} · ${q.phone} · ${q.make} ${q.model} · ${branchName(q.branchId)}`); }
   catch(e){ console.error(e); toast("تعذّر الحذف"); }
 }
 function quoteCardHTML(q,forMgr){
@@ -2977,7 +2980,7 @@ function quoteCardHTML(q,forMgr){
     <div class="sup-top" style="align-items:flex-start">
       <div style="min-width:0">
         ${forMgr?`<div class="sup-branch" style="color:#c0392b">${branchName(q.branchId)}</div>`:""}
-        <div style="font-size:15px;font-weight:700">${q.name?esc(q.name)+" · ":""}<span dir="ltr">${esc(q.phone)}</span></div>
+        <div style="font-size:15px;font-weight:700"><span class="q-no">#${esc(quoteNo(q))}</span> ${q.name?esc(q.name)+" · ":""}<span dir="ltr">${esc(q.phone)}</span></div>
         <div style="font-size:12.5px;color:var(--muted)">🚗 ${car}${meta?" · "+meta:""} · ${timeAgo(q.t)}</div>
       </div>${st}
     </div>

@@ -160,7 +160,7 @@ async function handle(collection, field, build){
 
   // طلب تسعيرة من زبون (صفحة quote.html) → الفرع المختار
   counts.quotes = await handle("quotes","notified",(d,id)=>({ to:d.branchId, payload:{
-    title:"🧾 طلب تسعيرة من زبون", body:`${d.make||""} ${d.model||""} ${d.year||""} · ${(d.items||[]).length} عناصر${d.extra?" + قطع إضافية":""}`, tag:"q-"+id }}));
+    title:"🧾 طلب تسعيرة من زبون"+(d.no?" #"+d.no:""), body:`${d.make||""} ${d.model||""} ${d.year||""} · ${(d.items||[]).length} عناصر${d.extra?" + قطع إضافية":""}`, tag:"q-"+id }}));
 
   console.log("done.", JSON.stringify(counts), "notifications sent:", sent);
 })().catch(e=>{ console.error(e); process.exit(1); });

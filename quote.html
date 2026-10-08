@@ -371,16 +371,23 @@ $('#sendBtn').onclick=async function(){
       branchId:+branch.value, name:$('#cname').value.trim().slice(0,40), phone:$('#phone').value,
       make:make.value, model:model.value, year:year.value, km:kmVal(), vin:$('#vin').value,
       items:lines.map(function(l){return {t:l.it.t,q:l.q}}), extra:extra.slice(0,600) };
-    await db.collection("quotes").doc(String(id)).set(q);
+    // رقم تسلسلي حقيقي (1، 2، 3…): عدّاد مشترك يزيد بواحد داخل نفس العملية مع حفظ الطلب
+    var counter=db.collection("counters").doc("quotes"), ref=db.collection("quotes").doc(String(id));
+    var no=await db.runTransaction(function(tx){
+      return tx.get(counter).then(function(snap){
+        var n=(snap.exists&&+snap.data().n||0)+1;
+        tx.set(counter,{n:n}); q.no=n; tx.set(ref,q); return n;
+      });
+    });
     try{ localStorage.setItem('quoteLast',String(now)); localStorage.setItem('quoteBranch',branch.value); }catch(e){}
-    showDone(String(id).slice(-6));
+    showDone(no);
   }catch(e){ console.error(e); toast('تعذّر الإرسال — تأكد من الإنترنت وحاول مرة ثانية'); }
   btn.disabled=false; btn.textContent=old;
 };
 function showDone(no){
   var b=BRANCHES.find(function(x){return String(x.id)===branch.value});
   $('#doneTxt').textContent='بيرسل لك '+(b?'فرع '+b.name:'الفرع')+' الأسعار على الواتساب في أقرب وقت.';
-  $('#doneNo').textContent='رقم الطلب: '+no;
+  $('#doneNo').textContent='رقم طلبك: '+no;
   $('#formView').classList.add('hidden'); $('#doneView').classList.remove('hidden'); $('#bar').classList.remove('on');
   window.scrollTo({top:0});
 }

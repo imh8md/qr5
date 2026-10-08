@@ -51,7 +51,8 @@ service cloud.firestore {
     // لذلك لا تُوقف Anonymous من Authentication — هذي القاعدة تحصره في إنشاء طلب تسعيرة بحقول محددة
     match /quotes/{id} {
       allow create: if request.auth != null
-        && request.resource.data.keys().hasOnly(['id','t','status','notified','source','branchId','name','phone','make','model','year','km','vin','items','extra'])
+        && request.resource.data.keys().hasOnly(['id','t','status','notified','source','branchId','name','phone','make','model','year','km','vin','items','extra','no'])
+        && request.resource.data.no == getAfter(/databases/$(database)/documents/counters/quotes).data.n
         && request.resource.data.status == 'new' && request.resource.data.notified == false
         && request.resource.data.phone is string && request.resource.data.phone.matches('^05[0-9]{8}$')
         && request.resource.data.branchId is int && request.resource.data.branchId >= 1 && request.resource.data.branchId <= 50
@@ -61,6 +62,12 @@ service cloud.firestore {
       allow read: if isAdmin() || isBranch(resource.data.branchId);
       allow update: if isAdmin() || isBranch(resource.data.branchId);
       allow delete: if isAdmin();
+    }
+    // عدّاد أرقام طلبات التسعيرة (1، 2، 3…): يزيد بواحد فقط، مع إنشاء طلب في نفس العملية
+    match /counters/quotes {
+      allow read: if request.auth != null;
+      allow create: if request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == 1;
+      allow update: if request.resource.data.keys().hasOnly(['n']) && request.resource.data.n == resource.data.n + 1;
     }
     // سجل النشاط: يُكتب ولا يُعدّل، والإدارة فقط تقرأه
     match /activity/{id} {
