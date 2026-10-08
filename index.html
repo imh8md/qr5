@@ -13,6 +13,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="assets/catalog/catalog-data.js" defer></script>
 <style>
   @font-face{font-family:'Handicrafts';font-weight:400;font-style:normal;font-display:swap;
     src:url(assets/fonts/TheYearofHandicrafts-Regular.otf) format('opentype')}
@@ -201,7 +202,7 @@
   .btn-cancel{background:var(--soft);color:var(--txt);border:1px solid var(--line)}
   .btn-send{background:var(--gold);color:#fff}
 
-  .toast{position:fixed;bottom:92px;inset-inline-start:50%;transform:translateX(-50%);
+  .toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);
     background:var(--txt);color:#fff;padding:11px 22px;border-radius:24px;font-size:13px;
     z-index:60;opacity:0;transition:.25s;pointer-events:none;font-weight:600}
   .toast.show{opacity:1}
@@ -331,7 +332,7 @@
     width:30px;height:30px;font-size:20px;cursor:pointer;flex:none;line-height:1}
 
   /* ===== الحوالات ===== */
-  .mode-toggle{display:flex;flex-wrap:wrap;gap:8px;padding:14px 24px 0;max-width:620px}
+  .mode-toggle{display:flex;flex-wrap:wrap;gap:8px;padding:14px 24px 0;max-width:760px}
   .mode-btn{flex:1 1 120px;min-width:120px;background:var(--panel);border:1px solid var(--line);color:var(--muted);
     padding:10px;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;
     font-family:inherit;transition:.15s;white-space:nowrap}
@@ -359,11 +360,65 @@
   .ar-badge.delay{background:var(--gold-soft);color:var(--gold)}
   #mode-supplies.active{background:#7a5cc9;border-color:#7a5cc9;color:#fff}
   #mode-catalog.active{background:#c0392b;border-color:#c0392b;color:#fff}
-  .cat-bar{display:flex;justify-content:flex-end;padding:12px 24px 0;max-width:620px}
-  .cat-open{font-size:12.5px;font-weight:700;color:var(--muted);text-decoration:none}
-  .cat-frame{display:block;width:calc(100% - 48px);max-width:620px;height:78vh;min-height:520px;
-    margin:10px 24px 0;border:1px solid var(--line);border-radius:14px;background:#f5f2ed}
-  @media(max-width:600px){.cat-frame{width:calc(100% - 32px);margin:10px 16px 0}.cat-bar{padding:12px 16px 0}}
+  /* ===== الكتالوج ===== */
+  .cat-wrap{padding:14px 24px 0;max-width:1000px;margin-inline:auto}
+  .cat-seg{display:flex;background:var(--soft);border-radius:12px;padding:4px;gap:4px;max-width:420px}
+  .cat-seg button{flex:1;border:none;background:none;padding:9px;border-radius:9px;font-size:13.5px;
+    font-weight:700;color:var(--muted);cursor:pointer}
+  .cat-seg button.active{background:var(--panel);color:#c0392b;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .cat-search{margin-top:12px;position:relative;max-width:640px}
+  .cat-search input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    padding:11px 14px;color:var(--txt);font-size:14px;font-family:inherit;outline:none}
+  .cat-search input:focus{border-color:#c0392b}
+  .cat-chips{display:flex;gap:7px;margin-top:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .cat-chips::-webkit-scrollbar{display:none}
+  .cat-chip{flex:none;background:var(--panel);border:1px solid var(--line);color:var(--muted);padding:7px 14px;
+    border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .cat-chip.active{background:#c0392b;border-color:#c0392b;color:#fff}
+  .cat-chips.sub .cat-chip{padding:5px 12px;font-size:12px}
+  .cat-chips.sub .cat-chip.active{background:var(--txt);border-color:var(--txt)}
+  .cat-hint{font-size:11.5px;color:var(--muted);margin-top:10px}
+  .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+  .code-card,.gen-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);cursor:pointer;
+    transition:border-color .15s,transform .1s;position:relative;-webkit-tap-highlight-color:transparent}
+  .code-card:active,.gen-card:active{transform:scale(.98)}
+  .code-card{padding:14px 12px 12px;text-align:center}
+  .code-card .cc-code{direction:ltr;font-family:"Courier New",monospace;font-size:18px;font-weight:700;letter-spacing:.5px}
+  .code-card .cc-desc{font-size:12px;color:var(--txt);margin-top:5px;line-height:1.4}
+  .code-card .cc-meta{font-size:11px;color:var(--muted);margin-top:4px;direction:ltr}
+  .cat-copied{border-color:var(--green)!important;box-shadow:0 0 0 1px var(--green-bg)}
+  .cat-copied::after{content:"تم النسخ ✓";position:absolute;top:6px;left:8px;font-size:10.5px;font-weight:700;
+    color:var(--green);background:var(--green-bg);padding:1px 7px;border-radius:8px}
+  .gen-grid{grid-template-columns:repeat(auto-fill,minmax(165px,1fr))}
+  .gen-card{overflow:hidden;display:flex;flex-direction:column}
+  .gen-img{aspect-ratio:1/1;background:#fff;display:flex;align-items:center;justify-content:center;
+    border-bottom:1px solid var(--line)}
+  .gen-img img{width:82%;height:82%;object-fit:contain}
+  .gen-img .ph{font-size:38px;opacity:.35}
+  .gen-body{padding:9px 11px 11px}
+  .gen-name{font-size:13px;font-weight:700;line-height:1.35}
+  .gen-code{direction:ltr;text-align:right;font-family:"Courier New",monospace;font-size:13.5px;font-weight:700;
+    color:#c0392b;margin-top:4px}
+  .gen-cars{font-size:10.5px;color:var(--muted);margin-top:3px;line-height:1.4}
+  .gen-zoom{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;border:none;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 3px rgba(0,0,0,.15);font-size:13px;cursor:pointer}
+  .cat-res{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+  .cat-row{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:10px 12px;cursor:pointer;position:relative}
+  .cat-row img,.cat-row .ri{width:42px;height:42px;flex:none;object-fit:contain;border-radius:8px;background:var(--soft);
+    display:flex;align-items:center;justify-content:center;font-size:18px}
+  .cat-row .rt{flex:1;min-width:0}
+  .cat-row .rs{font-size:10.5px;color:var(--muted)}
+  .cat-row .rl{font-size:13px;font-weight:600}
+  .cat-row .rc{direction:ltr;font-family:"Courier New",monospace;font-weight:700;font-size:14px;color:#c0392b}
+  .cat-lb{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;display:flex;align-items:center;
+    justify-content:center;padding:24px}
+  .cat-lb .box{background:#fff;border-radius:16px;max-width:420px;width:100%;overflow:hidden;text-align:center}
+  .cat-lb img{width:100%;max-height:60vh;object-fit:contain;display:block;padding:16px}
+  .cat-lb .lb-b{padding:0 16px 16px}
+  .cat-lb .lb-c{direction:ltr;font-family:"Courier New",monospace;font-size:22px;font-weight:700;color:#c0392b;margin:6px 0 12px}
+  .cat-lb .lb-btn{width:100%;border:none;background:#c0392b;color:#fff;border-radius:10px;padding:11px;font-size:14px;font-weight:700;cursor:pointer}
+  @media(max-width:600px){.cat-wrap{padding:14px 16px 0}.cat-grid{grid-template-columns:repeat(2,1fr)}}
   .sup-bar .newreq-btn{background:#7a5cc9}
   .sup-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;position:relative}
   .sup-card.pending{border-color:#7a5cc9;box-shadow:0 0 0 1px #efeafa}
@@ -557,8 +612,14 @@
     <div class="list" id="supList"></div>
   </div>
   <div id="catalogView" class="hidden">
-    <div class="cat-bar"><a class="cat-open" href="catalog.html" target="_blank" rel="noopener">⛶ فتح بملء الشاشة</a></div>
-    <iframe id="catFrame" class="cat-frame" title="كتالوج السيارات"></iframe>
+    <div class="cat-wrap">
+      <div class="cat-seg">
+        <button id="catSegCars" class="active" onclick="setCatSection('cars')">🚗 رموز السيارات</button>
+        <button id="catSegGen" onclick="setCatSection('general')">⚙️ أرقام عامة</button>
+      </div>
+      <div class="cat-search"><input id="catSearch" placeholder="🔍 ابحث برمز، سيارة، موديل، محرك أو اسم القطعة…" oninput="renderCatalog()"></div>
+      <div id="catBody"></div>
+    </div>
   </div>
 </div>
 
@@ -1694,8 +1755,83 @@ function setBranchMode(m){
   if(m==="transfers") renderBranchTransfers();
   if(m==="arrival") initArrivalForm();
   if(m==="supplies") renderBranchSupplies();
-  if(m==="catalog"){ const f=document.getElementById("catFrame"); if(!f.src) f.src="catalog.html"; }
+  if(m==="catalog") renderCatalog();
 }
+
+/* ===== الكتالوج: رموز السيارات + الأرقام العامة (البيانات في assets/catalog/catalog-data.js) ===== */
+let catSection="cars", catCar=null, catGroup={}, catGenTab="الكل";
+function setCatSection(s){ catSection=s; renderCatalog(); }
+function catNorm(v){ return String(v||"").replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d)).toLowerCase().replace(/[\s-]/g,""); }
+function catCopy(text,el){
+  const done=()=>{ if(el){ el.classList.add("cat-copied"); setTimeout(()=>el.classList.remove("cat-copied"),1600); } toast("تم نسخ: \u2066"+text+"\u2069"); };
+  const fallback=()=>{ const t=document.createElement("textarea"); t.value=text; t.style.position="fixed"; t.style.opacity="0";
+    document.body.appendChild(t); t.select(); try{document.execCommand("copy");}catch(e){} t.remove(); done(); };
+  if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done).catch(fallback); else fallback();
+}
+function catCarRows(){ const out=[]; for(const car in CATALOG.cars) for(const g in CATALOG.cars[car]) CATALOG.cars[car][g].forEach(r=>out.push({car,group:g,...r})); return out; }
+function catGenItems(){ const out=[]; for(const cat in CATALOG.general) CATALOG.general[cat].forEach(it=>out.push({cat,...it})); return out; }
+function codeCardHTML(r){
+  return `<div class="code-card" data-copy="${esc(r.code)}L#"><div class="cc-code">${esc(r.code)}</div>`+
+    `<div class="cc-desc">${esc(r.desc)}</div><div class="cc-meta">${esc(r.years)} · ${esc(r.engine)}</div></div>`;
+}
+function genCardHTML(it){
+  const img=it.img?`<img src="${esc(it.img)}" alt="" loading="lazy">`:`<span class="ph">⚙️</span>`;
+  return `<div class="gen-card" data-copy="${esc(it.code)}"><div class="gen-img">${img}</div>`+
+    (it.img?`<button class="gen-zoom" data-zoom="${esc(it.code)}" title="تكبير">🔍</button>`:"")+
+    `<div class="gen-body"><div class="gen-name">${esc(it.name)}</div><div class="gen-code">${esc(it.code)}</div>`+
+    `<div class="gen-cars">${esc(it.cars)}</div></div></div>`;
+}
+function renderCatalog(){
+  const body=document.getElementById("catBody"); if(!body) return;
+  if(typeof CATALOG==="undefined"){ body.innerHTML=`<div class="empty">تعذّر تحميل الكتالوج</div>`; return; }
+  document.getElementById("catSegCars").classList.toggle("active",catSection==="cars");
+  document.getElementById("catSegGen").classList.toggle("active",catSection==="general");
+  const q=catNorm(document.getElementById("catSearch").value);
+  if(q){
+    const cars=catCarRows().filter(r=>[r.code,r.car,r.group,r.desc,r.years,r.engine].some(v=>catNorm(v).includes(q)));
+    const gens=catGenItems().filter(it=>[it.code,it.name,it.cat,it.cars].some(v=>catNorm(v).includes(q)));
+    if(!cars.length && !gens.length){ body.innerHTML=`<div class="empty"><div class="ic">🔍</div>لا توجد نتائج</div>`; return; }
+    body.innerHTML=`<div class="cat-hint">${cars.length+gens.length} نتيجة — اضغط للنسخ</div><div class="cat-res">`+
+      cars.slice(0,40).map(r=>`<div class="cat-row" data-copy="${esc(r.code)}L#"><span class="ri">🚗</span><div class="rt">`+
+        `<div class="rs">${esc(r.car)} · ${esc(r.years)} · ${esc(r.engine)}</div><div class="rl">${esc(r.desc)}</div></div><div class="rc">${esc(r.code)}</div></div>`).join("")+
+      gens.slice(0,40).map(it=>`<div class="cat-row" data-copy="${esc(it.code)}">${it.img?`<img src="${esc(it.img)}" alt="">`:`<span class="ri">⚙️</span>`}<div class="rt">`+
+        `<div class="rs">أرقام عامة · ${esc(it.cat)}</div><div class="rl">${esc(it.name)}</div></div><div class="rc">${esc(it.code)}</div></div>`).join("")+`</div>`;
+    return;
+  }
+  if(catSection==="cars"){
+    const carNames=Object.keys(CATALOG.cars);
+    if(!catCar || !CATALOG.cars[catCar]) catCar=carNames[0];
+    const groups=Object.keys(CATALOG.cars[catCar]);
+    if(!catGroup[catCar] || !CATALOG.cars[catCar][catGroup[catCar]]) catGroup[catCar]=groups[0];
+    body.innerHTML=`<div class="cat-chips">`+carNames.map(c=>`<button class="cat-chip${c===catCar?" active":""}" data-car="${esc(c)}">${esc(c)}</button>`).join("")+`</div>`+
+      (groups.length>1?`<div class="cat-chips sub">`+groups.map(g=>`<button class="cat-chip${g===catGroup[catCar]?" active":""}" data-group="${esc(g)}">${esc(g)}</button>`).join("")+`</div>`:"")+
+      `<div class="cat-hint">اضغط على الرمز لنسخه مع L# جاهز للبحث</div>`+
+      `<div class="cat-grid">`+CATALOG.cars[catCar][catGroup[catCar]].map(codeCardHTML).join("")+`</div>`;
+  } else {
+    const tabs=["الكل",...Object.keys(CATALOG.general)];
+    if(!tabs.includes(catGenTab)) catGenTab="الكل";
+    const items=catGenTab==="الكل"?catGenItems():CATALOG.general[catGenTab];
+    body.innerHTML=`<div class="cat-chips">`+tabs.map(t=>`<button class="cat-chip${t===catGenTab?" active":""}" data-gen="${esc(t)}">${esc(t)}</button>`).join("")+`</div>`+
+      `<div class="cat-hint">اضغط على المنتج لنسخ رقمه</div><div class="cat-grid gen-grid">`+items.map(genCardHTML).join("")+`</div>`;
+  }
+}
+function catZoom(code){
+  const it=catGenItems().find(x=>x.code===code); if(!it) return;
+  const lb=document.createElement("div"); lb.className="cat-lb";
+  lb.innerHTML=`<div class="box"><img src="${esc(it.img)}" alt=""><div class="lb-b"><div class="gen-name">${esc(it.name)}</div>`+
+    `<div class="lb-c">${esc(it.code)}</div><button class="lb-btn">نسخ الرقم</button></div></div>`;
+  lb.onclick=e=>{ if(e.target===lb) lb.remove(); };
+  lb.querySelector(".lb-btn").onclick=()=>{ catCopy(it.code); lb.remove(); };
+  document.body.appendChild(lb);
+}
+document.addEventListener("click",e=>{
+  const v=document.getElementById("catalogView"); if(!v || !v.contains(e.target)) return;
+  const z=e.target.closest("[data-zoom]"); if(z){ catZoom(z.dataset.zoom); return; }
+  const c=e.target.closest("[data-car]"); if(c){ catCar=c.dataset.car; renderCatalog(); return; }
+  const g=e.target.closest("[data-group]"); if(g){ catGroup[catCar]=g.dataset.group; renderCatalog(); return; }
+  const t=e.target.closest("[data-gen]"); if(t){ catGenTab=t.dataset.gen; renderCatalog(); return; }
+  const k=e.target.closest("[data-copy]"); if(k) catCopy(k.dataset.copy,k);
+});
 
 /* ===== طلب المستلزمات ===== */
 let SUPPLIES=[], supAttached=false, supRetries=0, supUnsub=null;
