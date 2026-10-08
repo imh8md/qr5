@@ -458,10 +458,22 @@
   .sup-card>.tx-del~.sup-top{padding-inline-start:52px}
   .q-new{background:#fbeae8;color:#c0392b}
   .sup-card.pending.q-pending{border-color:#c0392b;box-shadow:0 0 0 1px #fbeae8}
-  .q-lines{padding:0 15px 8px}
-  .q-line{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line)}
-  .q-line small{color:var(--muted)}
-  .q-total{font-weight:900;border-bottom:none;color:#c0392b}
+  .q-price-area{padding:4px 15px 12px}
+  .q-head,.q-row{display:grid;grid-template-columns:1fr 54px 86px 28px;gap:6px;align-items:center}
+  .q-head{font-size:11px;color:var(--muted);font-weight:700;padding:0 2px 4px}
+  .q-row{margin-bottom:6px}
+  .q-row input{width:100%;min-width:0;background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:8px 9px;font-family:inherit;font-size:13.5px;outline:none}
+  .q-row input:focus{border-color:#c0392b;background:#fff}
+  .q-row .q-qty{text-align:center;padding:8px 4px}
+  .q-row .q-price{direction:ltr;text-align:left;font-weight:700}
+  .q-x{width:28px;height:28px;border:none;border-radius:8px;background:var(--soft);color:var(--muted);cursor:pointer;font-size:16px}
+  .q-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 8px}
+  .q-add{background:none;border:1px dashed var(--line);border-radius:9px;padding:6px 12px;color:#c0392b;font-weight:700;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .q-vat{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:5px;cursor:pointer}
+  .q-totals{background:var(--soft);border-radius:10px;padding:8px 12px;font-size:13px}
+  .q-totals div{display:flex;justify-content:space-between;padding:2px 0;color:var(--muted)}
+  .q-totals .g{color:#c0392b;font-weight:900;font-size:15px;border-top:1px solid var(--line);margin-top:4px;padding-top:6px}
+  .q-hint{font-size:11px;color:var(--muted);margin-top:6px}
   .q-wa{background:#25a35a}
   .q-reassign{flex:1;min-width:150px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 8px;font-family:inherit;font-size:12.5px}
   .mode-btn .nav-badge{vertical-align:middle}
@@ -1411,10 +1423,12 @@ function enter(b){
 function logout(){ if(IS_ADMIN){ backToAdmin(); return; } auth.signOut(); }  // onAuthStateChanged يعيد عرض شاشة الدخول
 // الإدارة: الدخول لواجهة أي فرع والرجوع
 function openAsBranch(id){
+  const ml=document.getElementById("mgrQList"); if(ml) ml.innerHTML="";
   const b=BRANCHES.find(x=>x.id===+id)||BRANCHES[0];
   enter(b); window.scrollTo({top:0});
 }
 function backToAdmin(){
+  const ql=document.getElementById("qList"); if(ql) ql.innerHTML="";
   $("#app").classList.add("hidden"); $("#fab").classList.add("hidden");
   const ab=document.getElementById("adminBar"); if(ab) ab.classList.add("hidden");
   enterMgr();
@@ -2837,13 +2851,17 @@ function renderActivity(){
 
 /* ===== طلبات التسعيرة (من صفحة quote.html للزبائن) ===== */
 let QUOTES=[], qAttached=false, qUnsub=null, qRetries=0, qSeen=null, qTab="new", mgrQTab="new";
-const Q_TABS=[{k:"new",label:"جديدة"},{k:"replied",label:"تم الرد"},{k:"all",label:"الكل"}];
+const Q_TABS=[{k:"new",label:"بانتظار التسعير"},{k:"replied",label:"تم الرد"},{k:"all",label:"الكل"}];
 function startQuoteListener(){
   if(qAttached) return; qAttached=true;
   qUnsub=scopedQuery("quotes").onSnapshot(snap=>{
     qRetries=0;
     QUOTES=snap.docs.map(d=>{ const q=cleanNums(d.data());
-      q.items=(Array.isArray(q.items)?q.items:[]).map(i=>({t:String(i.t??""),p:num(i.p),q:num(i.q)||1}));
+      q.items=(Array.isArray(q.items)?q.items:[]).map(i=>({t:String(i.t??""),q:num(i.q)||1}));
+      q.extra=q.extra==null?"":String(q.extra); q.name=q.name==null?"":String(q.name);
+      if(q.priced&&Array.isArray(q.priced.lines)) q.priced={vatIncl:!!q.priced.vatIncl,
+        lines:q.priced.lines.map(l=>({t:String(l.t??""),q:num(l.q)||1,p:l.p===""||l.p==null?"":num(l.p)}))};
+      else delete q.priced;
       ["km","sub","vat","total","repliedAt"].forEach(k=>{ if(k in q) q[k]=num(q[k]); });
       return q; }).sort((a,b)=>b.t-a.t);
     // تنبيه داخل التطبيق لطلب تسعيرة جديد وصل الحين
@@ -2852,6 +2870,7 @@ function startQuoteListener(){
     qSeen=ids;
     updateQuoteBadges();
     const appEl=document.getElementById("app"), mgrEl=document.getElementById("mgr");
+    if(qTyping()){ qPendingRender=true; return; }   // لا تمسح الأسعار وهو يكتب
     if(appEl && !appEl.classList.contains("hidden") && branchMode==="quotes") renderBranchQuotes();
     if(mgrEl && !mgrEl.classList.contains("hidden")) renderMgrQuotes();
   }, err=>{
@@ -2868,27 +2887,71 @@ function updateQuoteBadges(){
 function quoteLink(){ return location.origin+location.pathname.replace(/[^/]*$/,"")+"quote.html"; }
 function copyQuoteLink(){ catCopy(quoteLink()); }
 function waPhone(p){ return String(p||"").replace(/[^0-9]/g,"").replace(/^0/,"966"); }
-function quoteMsg(q){
+/* التسعير: الفرع/الإدارة يحط سعر لكل قطعة ← يحسب الضريبة ← يرسل بالواتساب */
+const VAT=0.15, QDRAFT={};
+let qPendingRender=false;
+function qTyping(){ const a=document.activeElement; return !!(a && a.closest && a.closest(".q-price-area") && a.tagName==="INPUT"); }
+// يرسم بس الشاشة الظاهرة (الفرع أو الإدارة) — عشان ما تتكرر حقول الأسعار
+function rerenderQuotes(){
+  const appEl=document.getElementById("app"), mgrEl=document.getElementById("mgr");
+  if(appEl && !appEl.classList.contains("hidden") && branchMode==="quotes") renderBranchQuotes();
+  if(mgrEl && !mgrEl.classList.contains("hidden")) renderMgrQuotes();
+}
+document.addEventListener("focusout",()=>setTimeout(()=>{ if(qPendingRender && !qTyping()){ qPendingRender=false; rerenderQuotes(); } },150));
+function qDraft(q){
+  if(!QDRAFT[q.id]){
+    QDRAFT[q.id] = q.priced
+      ? {vatIncl:q.priced.vatIncl, lines:q.priced.lines.map(l=>({...l,p:l.p===""?"":String(l.p)}))}
+      : {vatIncl:false, lines:q.items.map(i=>({t:i.t,q:i.q,p:""})).concat(q.extra?[{t:q.extra,q:1,p:"",free:true}]:[])};
+  }
+  return QDRAFT[q.id];
+}
+function qCalc(d){
+  const priced=d.lines.filter(l=>l.t.trim() && l.p!=="" && !isNaN(+l.p));
+  const sum=priced.reduce((a,l)=>a+(+l.p)*(+l.q||1),0);
+  const sub=d.vatIncl?sum/(1+VAT):sum, vat=d.vatIncl?sum-sub:sum*VAT;
+  return {priced, sub:Math.round(sub*100)/100, vat:Math.round(vat*100)/100, total:Math.round((sub+vat)*100)/100};
+}
+function quoteMsg(q,d,c){
   const no=String(q.id).slice(-6), br=branchName(q.branchId);
-  const lines=q.items.map(i=>`• ${i.t}${i.q>1?" × "+i.q:""}: ${fmtAmount(i.p*i.q)} ر.س`).join("\n");
+  const lines=d.lines.filter(l=>l.t.trim()).map(l=>{
+    const has=l.p!=="" && !isNaN(+l.p), qn=+l.q||1;
+    return `• ${l.t.trim()}${qn>1?" × "+qn:""}: `+(has?`${fmtAmount((+l.p)*qn)} ر.س${qn>1?` (الحبة ${fmtAmount(+l.p)})`:""}`:"غير متوفر حالياً");
+  }).join("\n");
   return `مرحباً${q.name?" "+q.name:""} 👋\nمعك فرع ${br} من القرعاوي بخصوص طلب التسعيرة رقم ${no}`+
-    ` (${q.make} ${q.model} ${q.year}):\n\n`+
-    (lines?lines+`\n\nالإجمالي شامل الضريبة: ${fmtAmount(q.total)} ر.س\n`:"")+
-    (q.extra?`\nالقطع الإضافية:\n• ${q.extra}: ___ ر.س\n`:"")+
-    `\nالأسعار حسب التوفّر — نسعد بخدمتك.`;
+    ` (${[q.make,q.model,q.year].filter(Boolean).join(" ")}):\n\n${lines}\n\n`+
+    (c.priced.length?`المجموع قبل الضريبة: ${fmtAmount(c.sub)} ر.س\nضريبة القيمة المضافة 15%: ${fmtAmount(c.vat)} ر.س\n*الإجمالي: ${fmtAmount(c.total)} ر.س*\n\n`:"")+
+    `الأسعار سارية 7 أيام حسب التوفّر — نسعد بخدمتك 🌹`;
 }
 async function replyQuote(id){
   const q=QUOTES.find(x=>x.id===id); if(!q) return;
-  window.open("https://wa.me/"+waPhone(q.phone)+"?text="+encodeURIComponent(quoteMsg(q)),"_blank");
-  if(q.status!=="replied"){
-    const by=IS_ADMIN?("الإدارة — "+(ADMIN_NAME||"")):branchName(me?me.id:q.branchId);
-    try{ await db.collection("quotes").doc(String(id)).update({status:"replied",repliedAt:Date.now(),repliedBy:by});
-      logActivity("رد على طلب تسعيرة", `${q.phone} · ${q.make} ${q.model} · ${branchName(q.branchId)}`); }
-    catch(e){ console.error(e); toast("انفتح الواتساب، لكن تعذّر تحديث الحالة"); }
-  }
+  const d=qDraft(q), c=qCalc(d);
+  if(!c.priced.length && !confirm("ما حطيت أي سعر — ترسل للزبون إن القطع غير متوفرة؟")) return;
+  // يُفتح الواتساب أولاً (المتصفح يسمح بالنافذة فقط مباشرة بعد الضغط)
+  window.open("https://wa.me/"+waPhone(q.phone)+"?text="+encodeURIComponent(quoteMsg(q,d,c)),"_blank");
+  const by=IS_ADMIN?("الإدارة — "+(ADMIN_NAME||"")):branchName(me?me.id:q.branchId);
+  const priced={vatIncl:!!d.vatIncl, lines:d.lines.filter(l=>l.t.trim()).map(l=>({t:l.t.trim().slice(0,200),q:+l.q||1,p:l.p===""||isNaN(+l.p)?"":+l.p}))};
+  try{
+    await db.collection("quotes").doc(String(id)).update({status:"replied",repliedAt:Date.now(),repliedBy:by,priced,sub:c.sub,vat:c.vat,total:c.total});
+    delete QDRAFT[id];
+    logActivity("تسعير ورد على طلب تسعيرة", `${q.phone} · ${q.make} ${q.model} · ${c.priced.length?fmtAmount(c.total)+" ر.س":"غير متوفر"} · ${branchName(q.branchId)}`);
+  }catch(e){ console.error(e); toast("انفتح الواتساب، لكن تعذّر حفظ الأسعار"); }
+}
+function qLineHTML(q,l,i){
+  return `<div class="q-row">
+    <input class="q-name" data-qid="${q.id}" data-i="${i}" data-f="t" value="${esc(l.t)}" placeholder="اسم القطعة">
+    <input class="q-qty" data-qid="${q.id}" data-i="${i}" data-f="q" type="number" min="1" inputmode="numeric" value="${esc(l.q)}" title="الكمية">
+    <input class="q-price" data-qid="${q.id}" data-i="${i}" data-f="p" inputmode="decimal" value="${esc(l.p)}" placeholder="السعر" title="سعر الحبة (فاضي = غير متوفر)">
+    <button class="q-x" data-qact="del" data-qid="${q.id}" data-i="${i}" title="حذف السطر">×</button>
+  </div>`;
+}
+function qTotalsHTML(c){
+  return `<div><span>المجموع قبل الضريبة</span><span>${fmtAmount(c.sub)}</span></div>
+    <div><span>الضريبة 15%</span><span>${fmtAmount(c.vat)}</span></div>
+    <div class="g"><span>الإجمالي</span><span>${fmtAmount(c.total)} ر.س</span></div>`;
 }
 async function reopenQuote(id){
-  try{ await db.collection("quotes").doc(String(id)).update({status:"new"}); }catch(e){ toast("تعذّر التحديث"); }
+  try{ await db.collection("quotes").doc(String(id)).update({status:"new"}); toast("رجع الطلب لقسم «جديدة» — عدّل الأسعار وأرسل"); }catch(e){ toast("تعذّر التحديث"); }
 }
 async function reassignQuote(id,branchId){
   const q=QUOTES.find(x=>x.id===id); if(!q||+branchId===q.branchId) return;
@@ -2903,14 +2966,14 @@ async function deleteQuote(id){
   catch(e){ console.error(e); toast("تعذّر الحذف"); }
 }
 function quoteCardHTML(q,forMgr){
-  const items=q.items.map(i=>`<div class="q-line"><span>${esc(i.t)}${i.q>1?` <small>× ${i.q}</small>`:""}</span><span>${fmtAmount(i.p*i.q)}</span></div>`).join("");
-  const st=q.status==="replied"?`<span class="tx-status tx-confirmed">تم الرد ✓</span>`:`<span class="tx-status q-new">جديد</span>`;
+  const d=qDraft(q), c=qCalc(d);
+  const st=q.status==="replied"?`<span class="tx-status tx-confirmed">تم الرد ✓</span>`:`<span class="tx-status q-new">بانتظار التسعير</span>`;
   const car=[q.make,q.model,q.year].filter(Boolean).map(esc).join(" ");
   const meta=[q.km?num(q.km).toLocaleString("en-US")+" كم":"", q.vin?`<span dir="ltr">${esc(q.vin)}</span>`:""].filter(Boolean).join(" · ");
   const reassign=forMgr?`<select class="q-reassign" onchange="reassignQuote(${q.id},this.value)">`+
     BRANCHES.map(b=>`<option value="${b.id}"${b.id===q.branchId?" selected":""}>${b.name}</option>`).join("")+`</select>`:"";
   const del=IS_ADMIN?`<button class="tx-del" onclick="deleteQuote(${q.id})" title="حذف">🗑</button>`:"";
-  return `<div class="sup-card ${q.status==="replied"?"":"pending q-pending"}">${del}
+  return `<div class="sup-card ${q.status==="replied"?"":"pending q-pending"}" data-qcard="${q.id}">${del}
     <div class="sup-top" style="align-items:flex-start">
       <div style="min-width:0">
         ${forMgr?`<div class="sup-branch" style="color:#c0392b">${branchName(q.branchId)}</div>`:""}
@@ -2918,15 +2981,45 @@ function quoteCardHTML(q,forMgr){
         <div style="font-size:12.5px;color:var(--muted)">🚗 ${car}${meta?" · "+meta:""} · ${timeAgo(q.t)}</div>
       </div>${st}
     </div>
-    ${items?`<div class="q-lines">${items}<div class="q-line q-total"><span>الإجمالي شامل الضريبة</span><span>${fmtAmount(q.total)} ر.س</span></div></div>`:""}
-    ${q.extra?`<div class="sup-note">📝 قطع إضافية: ${esc(q.extra)}</div>`:""}
+    ${q.extra?`<div class="sup-note">📝 كتب الزبون: ${esc(q.extra)}</div>`:""}
+    <div class="q-price-area">
+      <div class="q-head"><span>القطعة</span><span>الكمية</span><span>سعر الحبة</span><span></span></div>
+      ${d.lines.map((l,i)=>qLineHTML(q,l,i)).join("")}
+      <div class="q-tools">
+        <button class="q-add" data-qact="add" data-qid="${q.id}">+ إضافة قطعة</button>
+        <label class="q-vat"><input type="checkbox" data-qid="${q.id}" data-f="vatIncl" ${d.vatIncl?"checked":""}> الأسعار شاملة الضريبة</label>
+      </div>
+      <div class="q-totals" data-qtot="${q.id}">${qTotalsHTML(c)}</div>
+      <div class="q-hint">اترك السعر فاضي إذا القطعة غير متوفرة.</div>
+    </div>
     ${q.repliedBy&&q.status==="replied"?`<div class="sup-note">رد عليه: ${esc(q.repliedBy)}${q.repliedAt?" · "+timeAgo(q.repliedAt):""}</div>`:""}
     <div class="sup-foot" style="gap:8px;flex-wrap:wrap">${reassign}
-      ${q.status==="replied"?`<button class="ca-rej" style="background:var(--soft);color:var(--muted)" onclick="reopenQuote(${q.id})">↩ إرجاع لجديد</button>`:""}
-      <button class="sup-done-btn q-wa" onclick="replyQuote(${q.id})">💬 ${q.status==="replied"?"راسله مرة ثانية":"رد بالواتساب"}</button>
+      ${q.status==="replied"?`<button class="ca-rej" style="background:var(--soft);color:var(--muted)" onclick="reopenQuote(${q.id})">↩ إرجاع</button>`:""}
+      <button class="sup-done-btn q-wa" onclick="replyQuote(${q.id})">💬 ${q.status==="replied"?"إرسال الأسعار مرة ثانية":"إرسال الأسعار بالواتساب"}</button>
     </div>
   </div>`;
 }
+// تعديل الأسعار بدون إعادة رسم (يحافظ على مكان الكتابة)
+document.addEventListener("input",e=>{
+  const el=e.target; if(!el.dataset || !el.dataset.qid) return;
+  const q=QUOTES.find(x=>x.id===+el.dataset.qid); if(!q) return;
+  const d=qDraft(q);
+  if(el.dataset.f==="vatIncl") d.vatIncl=el.checked;
+  else { const l=d.lines[+el.dataset.i]; if(!l) return;
+    l[el.dataset.f]= el.dataset.f==="p" ? el.value.replace(/[٠-٩]/g,x=>"٠١٢٣٤٥٦٧٨٩".indexOf(x)).replace(/[^0-9.]/g,"") : el.value;
+    if(el.dataset.f==="p" && el.value!==l.p) el.value=l.p; }
+  document.querySelectorAll(`[data-qtot="${q.id}"]`).forEach(t=>t.innerHTML=qTotalsHTML(qCalc(d)));
+});
+document.addEventListener("change",e=>{ if(e.target.dataset && e.target.dataset.f==="vatIncl") e.target.dispatchEvent(new Event("input",{bubbles:true})); });
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-qact]"); if(!b) return;
+  const q=QUOTES.find(x=>x.id===+b.dataset.qid); if(!q) return;
+  const d=qDraft(q);
+  if(b.dataset.qact==="add") d.lines.push({t:"",q:1,p:""});
+  if(b.dataset.qact==="del") d.lines.splice(+b.dataset.i,1);
+  rerenderQuotes();
+  if(b.dataset.qact==="add"){ const rows=[...document.querySelectorAll(`[data-qcard="${q.id}"] .q-row .q-name`)].filter(x=>x.offsetParent); if(rows.length) rows[rows.length-1].focus(); }
+});
 function filterQuotes(list,k){ return k==="all"?list:list.filter(q=>q.status===k); }
 function quoteTabsHTML(list,cur,fn){
   return Q_TABS.map(t=>{ const n=filterQuotes(list,t.k).length;

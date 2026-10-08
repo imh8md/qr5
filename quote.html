@@ -87,7 +87,6 @@ select.ctl{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
 .opt:focus-visible{outline:3px solid var(--gold-soft);outline-offset:2px}
 .opt .t{font-weight:700;font-size:15.5px;padding-inline-end:34px}
 .opt .d{color:var(--muted);font-size:13px}
-.opt .p{margin-top:6px;font-weight:900;color:var(--red)}
 .opt .tick{position:absolute;top:14px;left:14px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900}
 .opt[aria-pressed="true"]{border-color:var(--red);background:var(--red-soft)}
 .opt[aria-pressed="true"] .tick{background:var(--red);border-color:var(--red)}
@@ -112,6 +111,7 @@ select.ctl{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.
 .btn.sec{background:var(--panel);color:var(--txt);border:1px solid var(--line)}
 .btn[disabled]{opacity:.45;cursor:default}
 .note{font-size:12.5px;color:var(--muted);margin-top:12px}
+.extra-sum{margin-top:12px;background:var(--soft);border-radius:12px;padding:10px 14px;font-size:14px;white-space:pre-wrap}
 
 /* الشريط السفلي */
 .bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);transform:translateY(110%);transition:transform .3s ease}
@@ -134,39 +134,13 @@ footer img{height:30px;opacity:.7;display:block;margin:0 auto 8px}
 .done .actions{justify-content:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
-/* عرض السعر PDF (يُرسم خارج الشاشة) */
-#inv{position:fixed;left:-10000px;top:0;width:794px;min-height:1120px;background:#fff;color:#1f1e1b;font-family:'Thmanyah Sans',sans-serif;padding:0 60px 50px;direction:rtl}
-#inv .redbar{height:8px;background:#c0392b;margin:0 -60px 40px}
-#inv .top{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #1f1e1b}
-#inv .top img{height:64px;display:block}
-#inv .co{font-size:12px;color:#8a8175;margin-top:8px;line-height:1.7}
-#inv .doc{text-align:left}
-#inv .doc h1{font-size:32px;margin:0;line-height:1;font-weight:900}
-#inv .doc div{font-size:12px;color:#8a8175;margin-top:8px;line-height:1.8}
-#inv .boxes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0}
-#inv .box{background:#f5f4ef;border-radius:12px;padding:14px 16px}
-#inv .box h3{font-size:12px;color:#8a8175;font-weight:500;margin:0 0 6px}
-#inv .box p{margin:0;font-size:13px;line-height:1.9}
-#inv table{width:100%;border-collapse:collapse;font-size:13px}
-#inv th{background:#1f1e1b;color:#fff;font-weight:500;padding:10px 12px;text-align:right}
-#inv th.n,#inv td.n{text-align:left;width:110px}
-#inv th.q,#inv td.q{text-align:center;width:60px}
-#inv td{padding:10px 12px;border-bottom:1px solid #e5e2d8}
-#inv td small{color:#8a8175}
-#inv .extra{margin-top:14px;font-size:12.5px;background:#f5f4ef;border-radius:10px;padding:10px 14px;line-height:1.8}
-#inv .tt{width:300px;margin-right:auto;margin-top:18px;font-size:13px}
-#inv .tt div{display:flex;justify-content:space-between;padding:6px 0;color:#8a8175}
-#inv .tt .g{color:#1f1e1b;font-weight:700;font-size:16px;border-top:2px solid #1f1e1b;margin-top:8px;padding-top:12px}
-#inv .tt .g span:last-child{background:#c0392b;color:#fff;padding:2px 10px;border-radius:6px}
-#inv .foot{margin-top:40px;padding-top:14px;border-top:1px solid #e5e2d8;font-size:11px;color:#8a8175;line-height:1.8;display:flex;justify-content:space-between}
-@media print{body>*:not(#inv){display:none!important}#inv{position:static;left:0}}
 </style>
 </head>
 <body>
 
 <header class="nav"><div class="wrap">
   <a href="#top"><img src="assets/logo.png" alt="القرعاوي"></a>
-  <nav><a href="#car">بياناتك</a><a href="#items">القطع والخدمات</a><a href="#sum">الملخص</a></nav>
+  <nav><a href="#car">بياناتك</a><a href="#items">القطع</a><a href="#sum">طلبك</a></nav>
 </div></header>
 
 <main id="top">
@@ -174,7 +148,7 @@ footer img{height:30px;opacity:.7;display:block;margin:0 auto 8px}
 <section class="hero"><div class="wrap">
   <span class="badge">طلب تسعيرة</span>
   <h1>تسعيرة سيارتك<br>من <span>القرعاوي</span></h1>
-  <p>عبّئ بيانات سيارتك، واختر اللي تحتاجه، وأرسل الطلب — يرد عليك الفرع على الواتساب.</p>
+  <p>عبّئ بيانات سيارتك، واختر القطع اللي تحتاجها، وأرسل الطلب — يرسل لك الفرع الأسعار على الواتساب.</p>
 </div></section>
 
 <section class="sec" id="car"><div class="wrap"><div class="card">
@@ -195,38 +169,32 @@ footer img{height:30px;opacity:.7;display:block;margin:0 auto 8px}
 
 <section class="sec" id="items"><div class="wrap"><div class="card">
   <div class="step"><span class="n">٢</span><h2>القطع والخدمات</h2></div>
-  <p class="lead">اضغط على أي بطاقة لإضافتها، واضغط مرة ثانية لإزالتها.</p>
+  <p class="lead">اضغط على أي بطاقة لإضافتها وحدد الكمية، واضغط مرة ثانية لإزالتها.</p>
   <div class="seg" role="tablist" id="tabs"></div>
   <div class="opts" id="opts" role="tabpanel"></div>
   <div class="field full" style="margin-top:20px"><label for="extra">قطع ثانية تبي تسعيرها <i>(اختياري)</i></label>
     <textarea class="ctl" id="extra" maxlength="600" placeholder="اكتب اسم القطعة أو رقمها، مثال: فحمات أمامية كامري 2018 — طقم مساعدات خلفية"></textarea>
-    <div class="hint">الفرع يسعّرها لك ويرسل السعر مع الرد.</div></div>
+    <div class="hint">الفرع يسعّرها لك مع باقي القطع.</div></div>
 </div></div></section>
 
 <section class="sec" id="sum"><div class="wrap"><div class="card">
-  <div class="step"><span class="n">٣</span><h2>الملخص</h2></div>
-  <p class="lead" id="sumLead">السعر التقديري شامل ضريبة القيمة المضافة.</p>
+  <div class="step"><span class="n">٣</span><h2>طلبك</h2></div>
+  <p class="lead">راجع طلبك وأرسله — الفرع يسعّر القطع حسب السعر الحالي والتوفّر، ويرسل لك الأسعار على الواتساب.</p>
   <ul class="lines" id="lines"></ul>
   <div class="empty" id="empty">ما اخترت شي من البطاقات للحين — تقدر تكتب القطع اللي تبيها في خانة «قطع ثانية».</div>
-  <div class="tot" id="tot">
-    <div><span>المجموع قبل الضريبة</span><span id="t-sub"></span></div>
-    <div id="feeRow"><span>رسوم الخدمة</span><span id="t-fee"></span></div>
-    <div><span id="t-vat-l">ضريبة القيمة المضافة</span><span id="t-vat"></span></div>
-    <div class="grand"><span>الإجمالي التقديري</span><b id="t-total"></b></div>
-  </div>
+  <div class="extra-sum hidden" id="extraSum"></div>
   <div class="actions">
-    <button class="btn pri" id="sendBtn">إرسال الطلب للفرع</button>
-    <button class="btn sec" id="pdfBtn">تحميل عرض السعر PDF</button>
+    <button class="btn pri" id="sendBtn">إرسال طلب التسعيرة</button>
     <button class="btn sec" id="clearBtn">مسح</button>
   </div>
-  <p class="note">الأسعار تقديرية، ويؤكدها الفرع قبل التنفيذ حسب توفّر القطع.</p>
+  <p class="note">بإرسال الطلب توافق إن الفرع يتواصل معك على رقم الجوال المكتوب.</p>
 </div></div></section>
 </div>
 
 <section class="done hidden" id="doneView"><div class="wrap">
   <div class="ic">✓</div>
   <h2>وصلنا طلبك</h2>
-  <p id="doneTxt">بيتواصل معك الفرع على الواتساب بالأسعار في أقرب وقت.</p>
+  <p id="doneTxt">بيرسل لك الفرع الأسعار على الواتساب في أقرب وقت.</p>
   <div class="no" id="doneNo"></div>
   <div class="actions"><button class="btn sec" id="doneNew">طلب تسعيرة جديد</button></div>
 </div></section>
@@ -235,51 +203,44 @@ footer img{height:30px;opacity:.7;display:block;margin:0 auto 8px}
 <footer><div class="wrap"><img src="assets/logo.png" alt="">القرعاوي — قطع غيار تويوتا الأصلية</div></footer>
 
 <div class="bar" id="bar"><div class="wrap">
-  <div><div class="k" id="barK">لا توجد عناصر</div><div class="v" id="barV">0 ر.س</div></div>
-  <button class="btn" id="barBtn">عرض الملخص</button>
+  <div><div class="k">طلبك</div><div class="v" id="barV">لا توجد قطع</div></div>
+  <button class="btn" id="barBtn">مراجعة وإرسال</button>
 </div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
-<div id="inv" aria-hidden="true"></div>
 
 <script>
 /* ======= إعدادات التسعيرة: عدّل الأسعار والبيانات من هنا ======= */
-var CONFIG={
-  company:{ name:"القرعاوي لقطع غيار تويوتا", city:"القصيم", phone:"", vat:"", cr:"" },
-  serviceFee:0,        // رسوم خدمة ثابتة (ريال) — 0 يخفي السطر
-  vatRate:0.15,        // ضريبة القيمة المضافة
-  validDays:7,         // صلاحية عرض السعر بالأيام
-  currency:"ر.س"
-};
-// ⚠ أسعار مبدئية من النموذج — تُستبدل بأسعار القرعاوي الفعلية
+// الزبون يختار القطع والكمية فقط — الأسعار يحطها الفرع أو الإدارة عند الرد (لأنها تتغير)
+// قائمة القطع المقترحة للزبون (بدون أسعار) — عدّلها من هنا
 var CATALOG=[
  {id:"oil",name:"الزيوت",items:[
-  {id:"o1",t:"زيت تويوتا 0W-20",d:"٤ لتر · لأغلب السيارات الحديثة",p:165},
-  {id:"o2",t:"زيت تويوتا 5W-30",d:"٥ لتر · للمحركات الأكبر",p:189},
-  {id:"o3",t:"زيت تويوتا 5W-40 ذهبي",d:"٤ لتر",p:120},
-  {id:"o4",t:"زيت تويوتا 10W-40",d:"٤ لتر",p:85},
-  {id:"o5",t:"لتر زيت إضافي",d:"للمحركات الكبيرة",p:32,qty:true}
+  {id:"o1",t:"زيت تويوتا 0W-20",d:"٤ لتر · لأغلب السيارات الحديثة"},
+  {id:"o2",t:"زيت تويوتا 5W-30",d:"٥ لتر · للمحركات الأكبر"},
+  {id:"o3",t:"زيت تويوتا 5W-40 ذهبي",d:"٤ لتر"},
+  {id:"o4",t:"زيت تويوتا 10W-40",d:"٤ لتر"},
+  {id:"o5",t:"لتر زيت إضافي",d:"للمحركات الكبيرة"}
  ]},
  {id:"flt",name:"الفلاتر",items:[
-  {id:"f1",t:"فلتر زيت",d:"يُغيّر مع كل زيت",p:35,qty:true},
-  {id:"f2",t:"فلتر هواء",d:"للمحرك",p:55},
-  {id:"f3",t:"فلتر مكيف",d:"لهواء المقصورة",p:45},
-  {id:"f4",t:"فلتر بنزين",d:"",p:70}
+  {id:"f1",t:"فلتر زيت",d:"يُغيّر مع كل زيت"},
+  {id:"f2",t:"فلتر هواء",d:"للمحرك"},
+  {id:"f3",t:"فلتر مكيف",d:"لهواء المقصورة"},
+  {id:"f4",t:"فلتر بنزين",d:""}
  ]},
  {id:"brk",name:"الفرامل",items:[
-  {id:"b1",t:"فحمات أمامية",d:"طقم كامل",p:180},
-  {id:"b2",t:"فحمات خلفية",d:"طقم كامل",p:150},
-  {id:"b3",t:"هوبات أمامية",d:"للزوج",p:320},
-  {id:"b4",t:"زيت فرامل DOT3",d:"354 مل",p:25,qty:true}
+  {id:"b1",t:"فحمات أمامية",d:"طقم كامل"},
+  {id:"b2",t:"فحمات خلفية",d:"طقم كامل"},
+  {id:"b3",t:"هوبات أمامية",d:"للزوج"},
+  {id:"b4",t:"زيت فرامل DOT3",d:"354 مل"}
  ]},
  {id:"bat",name:"البطاريات",items:[
-  {id:"a1",t:"بطارية ٧٠ أمبير",d:"",p:380},
-  {id:"a2",t:"بطارية ٨٠ أمبير",d:"",p:450},
-  {id:"a3",t:"بطارية ١٠٠ أمبير",d:"",p:560}
+  {id:"a1",t:"بطارية ٧٠ أمبير",d:""},
+  {id:"a2",t:"بطارية ٨٠ أمبير",d:""},
+  {id:"a3",t:"بطارية ١٠٠ أمبير",d:""}
  ]},
  {id:"liq",name:"السوائل",items:[
-  {id:"l1",t:"ماء رديتر Long Life",d:"تويوتا الأصلي",p:45,qty:true},
-  {id:"l2",t:"زيت قير أوتوماتيك ATF",d:"٤ لتر",p:160},
-  {id:"l3",t:"منظف بخاخات",d:"266 مل",p:40,qty:true}
+  {id:"l1",t:"ماء رديتر Long Life",d:"تويوتا الأصلي"},
+  {id:"l2",t:"زيت قير أوتوماتيك ATF",d:"٤ لتر"},
+  {id:"l3",t:"منظف بخاخات",d:"266 مل"}
  ]}
 ];
 var CARS={
@@ -314,8 +275,6 @@ var db=firebase.firestore();
 
 var $=function(s){return document.querySelector(s)};
 var state={sel:{},tab:CATALOG[0].id};
-var num=function(n){return (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})};
-var fmt=function(n){return num(n)+' '+CONFIG.currency};
 var AR='٠١٢٣٤٥٦٧٨٩',ar=function(n){return String(n).replace(/\d/g,function(d){return AR[d]})};
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 var itemById={};CATALOG.forEach(function(c){c.items.forEach(function(i){i.cat=c.id;itemById[i.id]=i})});
@@ -356,8 +315,8 @@ function renderOpts(){
   CATALOG.filter(function(c){return c.id===state.tab})[0].items.forEach(function(it){
     var on=!!state.sel[it.id];
     var el=document.createElement('div');el.className='opt';el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-pressed',String(on));
-    el.innerHTML='<span class="tick">'+(on?'✓':'')+'</span><span class="t">'+esc(it.t)+'</span>'+(it.d?'<span class="d">'+esc(it.d)+'</span>':'')+'<span class="p">'+fmt(it.p)+'</span>'
-      +(it.qty?'<span class="qty"><button type="button" data-a="+" aria-label="زيادة">+</button><b>'+(state.sel[it.id]||1)+'</b><button type="button" data-a="-" aria-label="إنقاص">−</button></span>':'');
+    el.innerHTML='<span class="tick">'+(on?'✓':'')+'</span><span class="t">'+esc(it.t)+'</span>'+(it.d?'<span class="d">'+esc(it.d)+'</span>':'')
+      +'<span class="qty"><button type="button" data-a="+" aria-label="زيادة">+</button><b>'+(state.sel[it.id]||1)+'</b><button type="button" data-a="-" aria-label="إنقاص">−</button></span>';
     el.addEventListener('click',function(e){
       var a=e.target.closest('button');
       if(a){e.stopPropagation();var q=state.sel[it.id]||1;q=a.dataset.a==='+'?Math.min(20,q+1):Math.max(1,q-1);state.sel[it.id]=q;update();return}
@@ -368,26 +327,18 @@ function renderOpts(){
   });
 }
 function toggle(it){ if(state.sel[it.id])delete state.sel[it.id]; else state.sel[it.id]=1; update(); }
-function calc(){
-  var lines=Object.keys(state.sel).map(function(id){var it=itemById[id],q=state.sel[id];return {it:it,q:q,total:it.p*q}});
-  var sub=lines.reduce(function(a,l){return a+l.total},0);
-  var fee=lines.length?CONFIG.serviceFee:0;
-  var vat=(sub+fee)*CONFIG.vatRate;
-  return {lines:lines,sub:sub,fee:fee,vat:vat,total:sub+fee+vat};
-}
+function selLines(){ return Object.keys(state.sel).map(function(id){return {it:itemById[id],q:state.sel[id]}}); }
 function update(){
   renderTabs();renderOpts();
-  var c=calc(),L=$('#lines');L.innerHTML='';
-  c.lines.forEach(function(l){var li=document.createElement('li');li.innerHTML='<span>'+esc(l.it.t)+(l.q>1?' <span class="q">× '+l.q+'</span>':'')+'</span><span>'+fmt(l.total)+'</span>';L.appendChild(li)});
-  $('#empty').style.display=c.lines.length?'none':'block';
-  $('#tot').style.display=c.lines.length?'':'none';
-  $('#feeRow').style.display=CONFIG.serviceFee?'':'none';
-  $('#t-sub').textContent=fmt(c.sub);$('#t-fee').textContent=fmt(c.fee);
-  $('#t-vat-l').textContent='ضريبة القيمة المضافة '+Math.round(CONFIG.vatRate*100)+'%';$('#t-vat').textContent=fmt(c.vat);$('#t-total').textContent=fmt(c.total);
-  $('#pdfBtn').disabled=!c.lines.length;
-  var n=c.lines.length;$('#barK').textContent=n?(n===1?'عنصر واحد':ar(n)+' عناصر'):'لا توجد عناصر';$('#barV').textContent=fmt(c.total);
-  $('#bar').classList.toggle('on',n>0);
+  var lines=selLines(),L=$('#lines');L.innerHTML='';
+  lines.forEach(function(l){var li=document.createElement('li');li.innerHTML='<span>'+esc(l.it.t)+'</span><span class="q">الكمية: '+l.q+'</span>';L.appendChild(li)});
+  var extra=$('#extra').value.trim();
+  $('#empty').style.display=lines.length?'none':'block';
+  $('#extraSum').classList.toggle('hidden',!extra); $('#extraSum').textContent=extra?'قطع ثانية: '+extra:'';
+  var n=lines.length;$('#barV').textContent=n?(n===1?'قطعة واحدة':ar(n)+' قطع'):'لا توجد قطع';
+  $('#bar').classList.toggle('on',n>0||!!extra);
 }
+$('#extra').addEventListener('input',function(){update()});
 $('#clearBtn').onclick=function(){state.sel={};$('#extra').value='';update();toast('تم مسح الاختيارات')};
 $('#barBtn').onclick=function(){$('#sum').scrollIntoView({behavior:'smooth'})};
 function toast(t){var el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('on')},2600)}
@@ -408,8 +359,8 @@ function validate(needBranch){
 // إرسال الطلب للفرع (يصل لقسم «التسعيرات» في نظام الفروع)
 $('#sendBtn').onclick=async function(){
   if(!validate(true))return;
-  var c=calc(), extra=$('#extra').value.trim();
-  if(!c.lines.length&&!extra){ $('#items').scrollIntoView({behavior:'smooth'}); toast('اختر قطعة أو اكتب القطع اللي تبيها'); return; }
+  var lines=selLines(), extra=$('#extra').value.trim();
+  if(!lines.length&&!extra){ $('#items').scrollIntoView({behavior:'smooth'}); toast('اختر قطعة أو اكتب القطع اللي تبيها'); return; }
   if($('#website').value){ showDone('—'); return; }   // فخ للروبوتات
   try{ var last=+localStorage.getItem('quoteLast')||0; if(Date.now()-last<60000){ toast('أرسلت طلب قبل شوي — انتظر دقيقة'); return; } }catch(e){}
   var btn=this; btn.disabled=true; var old=btn.textContent; btn.textContent='جارٍ الإرسال…';
@@ -419,8 +370,7 @@ $('#sendBtn').onclick=async function(){
     var q={ id:id, t:now, status:"new", notified:false, source:"quote-page",
       branchId:+branch.value, name:$('#cname').value.trim().slice(0,40), phone:$('#phone').value,
       make:make.value, model:model.value, year:year.value, km:kmVal(), vin:$('#vin').value,
-      items:c.lines.map(function(l){return {t:l.it.t,p:l.it.p,q:l.q}}), extra:extra.slice(0,600),
-      sub:Math.round(c.sub*100)/100, vat:Math.round(c.vat*100)/100, total:Math.round(c.total*100)/100 };
+      items:lines.map(function(l){return {t:l.it.t,q:l.q}}), extra:extra.slice(0,600) };
     await db.collection("quotes").doc(String(id)).set(q);
     try{ localStorage.setItem('quoteLast',String(now)); localStorage.setItem('quoteBranch',branch.value); }catch(e){}
     showDone(String(id).slice(-6));
@@ -429,57 +379,13 @@ $('#sendBtn').onclick=async function(){
 };
 function showDone(no){
   var b=BRANCHES.find(function(x){return String(x.id)===branch.value});
-  $('#doneTxt').textContent='بيتواصل معك '+(b?'فرع '+b.name:'الفرع')+' على الواتساب بالأسعار في أقرب وقت.';
+  $('#doneTxt').textContent='بيرسل لك '+(b?'فرع '+b.name:'الفرع')+' الأسعار على الواتساب في أقرب وقت.';
   $('#doneNo').textContent='رقم الطلب: '+no;
   $('#formView').classList.add('hidden'); $('#doneView').classList.remove('hidden'); $('#bar').classList.remove('on');
   window.scrollTo({top:0});
 }
 $('#doneNew').onclick=function(){ state.sel={}; state.tab=CATALOG[0].id; $('#extra').value=''; update(); $('#doneView').classList.add('hidden'); $('#formView').classList.remove('hidden'); window.scrollTo({top:0}); };
 
-// عرض السعر PDF
-var libsP=null;
-function loadLibs(){
-  if(libsP) return libsP;
-  var add=function(src){return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s)})};
-  libsP=Promise.all([add('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),add('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')]);
-  return libsP;
-}
-function buildInvoice(){
-  var c=calc(),d=new Date(),v=new Date(d.getTime()+CONFIG.validDays*864e5);
-  var p2=function(n){return String(n).padStart(2,'0')};
-  var no='QR-'+String(d.getFullYear()).slice(2)+p2(d.getMonth()+1)+p2(d.getDate())+'-'+p2(d.getHours())+p2(d.getMinutes());
-  var ds=function(x){return x.getFullYear()+'/'+p2(x.getMonth()+1)+'/'+p2(x.getDate())};
-  var co=CONFIG.company, b=BRANCHES.find(function(x){return String(x.id)===branch.value});
-  var coLines=[b&&('الفرع: '+b.name),co.phone&&('الجوال: '+co.phone),co.cr&&('السجل التجاري: '+co.cr),co.vat&&('الرقم الضريبي: '+co.vat)].filter(Boolean).map(esc).join('<br>');
-  var rows=c.lines.map(function(l){return '<tr><td>'+esc(l.it.t)+(l.it.d?'<br><small>'+esc(l.it.d)+'</small>':'')+'</td><td class="q">'+l.q+'</td><td class="n">'+num(l.it.p)+'</td><td class="n">'+num(l.total)+'</td></tr>'}).join('');
-  var extra=$('#extra').value.trim();
-  $('#inv').innerHTML='<div class="redbar"></div>'
-   +'<div class="top"><div><img src="assets/logo.png" alt=""><div class="co">'+esc(co.name)+(coLines?'<br>'+coLines:'')+'</div></div>'
-   +'<div class="doc"><h1>عرض سعر</h1><div>رقم العرض: <b>'+no+'</b><br>التاريخ: '+ds(d)+'<br>صالح حتى: '+ds(v)+'</div></div></div>'
-   +'<div class="boxes"><div class="box"><h3>بيانات العميل</h3><p>'+($('#cname').value.trim()?'الاسم: <b>'+esc($('#cname').value.trim())+'</b><br>':'')+'الجوال: <b>'+esc($('#phone').value)+'</b></p></div>'
-   +'<div class="box"><h3>بيانات السيارة</h3><p><b>'+esc(make.value)+' '+esc(model.value)+'</b> · موديل '+esc(year.value)+(kmVal()?'<br>الممشى: <b>'+kmVal().toLocaleString('en-US')+' كم</b>':'')+($('#vin').value?'<br>الهيكل: <b dir="ltr">'+esc($('#vin').value)+'</b>':'')+'</p></div></div>'
-   +'<table><thead><tr><th>القطعة / الخدمة</th><th class="q">الكمية</th><th class="n">سعر الوحدة</th><th class="n">المجموع</th></tr></thead><tbody>'+rows+'</tbody></table>'
-   +(extra?'<div class="extra"><b>قطع إضافية للتسعير:</b> '+esc(extra)+'</div>':'')
-   +'<div class="tt"><div><span>المجموع قبل الضريبة</span><span>'+num(c.sub)+' ريال</span></div>'+(c.fee?'<div><span>رسوم الخدمة</span><span>'+num(c.fee)+' ريال</span></div>':'')
-   +'<div><span>ضريبة القيمة المضافة '+Math.round(CONFIG.vatRate*100)+'%</span><span>'+num(c.vat)+' ريال</span></div><div class="g"><span>الإجمالي</span><span>'+num(c.total)+' ريال</span></div></div>'
-   +'<div class="foot"><span>عرض سعر تقديري، ويؤكده الفرع قبل التنفيذ حسب توفّر القطع.</span><span>شكرًا لاختيارك القرعاوي</span></div>';
-  return no;
-}
-$('#pdfBtn').onclick=async function(){
-  if(!validate(false))return;
-  var btn=this;btn.disabled=true;var old=btn.textContent;btn.textContent='جاري التجهيز…';
-  try{
-    await loadLibs();
-    var no=buildInvoice();await document.fonts.ready;
-    var canvas=await html2canvas($('#inv'),{scale:2,backgroundColor:'#ffffff',useCORS:true});
-    var pdf=new jspdf.jsPDF({unit:'pt',format:'a4'});var pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
-    var ih=canvas.height*pw/canvas.width,img=canvas.toDataURL('image/jpeg',0.95),y=0;
-    pdf.addImage(img,'JPEG',0,0,pw,ih);var left=ih-ph;while(left>4){y-=ph;pdf.addPage();pdf.addImage(img,'JPEG',0,y,pw,ih);left-=ph}
-    var u=URL.createObjectURL(pdf.output('blob')),a=document.createElement('a');a.href=u;a.download='عرض-سعر-القرعاوي-'+no+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
-    toast('تم تحميل عرض السعر');
-  }catch(e){console.error(e);buildInvoice();window.print()}
-  finally{btn.textContent=old;btn.disabled=!calc().lines.length}
-};
 update();
 </script>
 </body>
