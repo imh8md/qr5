@@ -1,6 +1,6 @@
 // قواعد Firestore المقترحة — تُلصق في Firebase Console ← Firestore ← Rules
 // شرطها: إضافة FIREBASE_SERVICE_ACCOUNT في أسرار GitHub أولاً (سكربت الإشعارات يتجاوز القواعد بحساب الخدمة)،
-// ثم إيقاف تسجيل الدخول المجهول (Anonymous) من Authentication.
+// ملاحظة: لا توقف الدخول المجهول (Anonymous) — صفحة التسعيرة للزبائن تحتاجه، والقواعد تحصره في إرسال طلب تسعيرة فقط.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -46,6 +46,21 @@ service cloud.firestore {
       allow read: if isStaff();
       allow create: if isAdmin() || (isBranch(request.resource.data.branchId) && request.resource.data.status == 'pending');
       allow update, delete: if isAdmin();
+    }
+    // طلبات التسعيرة من الزبائن (صفحة quote.html): الزبون يدخل دخولاً مجهولاً ويقدر «يرسل» فقط
+    // لذلك لا تُوقف Anonymous من Authentication — هذي القاعدة تحصره في إنشاء طلب تسعيرة بحقول محددة
+    match /quotes/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['id','t','status','notified','source','branchId','name','phone','make','model','year','km','vin','items','extra','sub','vat','total'])
+        && request.resource.data.status == 'new' && request.resource.data.notified == false
+        && request.resource.data.phone is string && request.resource.data.phone.matches('^05[0-9]{8}$')
+        && request.resource.data.branchId is int && request.resource.data.branchId >= 1 && request.resource.data.branchId <= 50
+        && request.resource.data.items is list && request.resource.data.items.size() <= 40
+        && request.resource.data.extra is string && request.resource.data.extra.size() <= 600
+        && request.resource.data.name is string && request.resource.data.name.size() <= 40;
+      allow read: if isAdmin() || isBranch(resource.data.branchId);
+      allow update: if isAdmin() || isBranch(resource.data.branchId);
+      allow delete: if isAdmin();
     }
     // سجل النشاط: يُكتب ولا يُعدّل، والإدارة فقط تقرأه
     match /activity/{id} {

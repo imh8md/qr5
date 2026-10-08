@@ -158,5 +158,9 @@ async function handle(collection, field, build){
       body:`${d.code||""}${!ok&&d.rejectReason?" — "+d.rejectReason:""}`, tag:"catd-"+id }};
   });
 
+  // طلب تسعيرة من زبون (صفحة quote.html) → الفرع المختار
+  counts.quotes = await handle("quotes","notified",(d,id)=>({ to:d.branchId, payload:{
+    title:"🧾 طلب تسعيرة من زبون", body:`${d.make||""} ${d.model||""} ${d.year||""} · ${(d.items||[]).length} عناصر${d.extra?" + قطع إضافية":""}`, tag:"q-"+id }}));
+
   console.log("done.", JSON.stringify(counts), "notifications sent:", sent);
 })().catch(e=>{ console.error(e); process.exit(1); });

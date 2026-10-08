@@ -385,7 +385,7 @@
     width:30px;height:30px;font-size:20px;cursor:pointer;flex:none;line-height:1}
 
   /* ===== الحوالات ===== */
-  .mode-toggle{display:flex;flex-wrap:wrap;gap:8px;padding:14px 24px 0;max-width:760px}
+  .mode-toggle{display:flex;flex-wrap:wrap;gap:8px;padding:14px 24px 0;max-width:900px}
   .mode-btn{flex:1 1 120px;min-width:120px;background:var(--panel);border:1px solid var(--line);color:var(--muted);
     padding:10px;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;
     font-family:inherit;transition:.15s;white-space:nowrap}
@@ -452,6 +452,19 @@
   .st-result.empty-res{background:var(--soft);color:var(--muted);font-size:13px}
   .cat-seg button{flex:1 1 0;min-width:0;line-height:1.3}
   @media(max-width:420px){.cat-seg button{font-size:12px;padding:8px 3px}}
+  .tx-bar.quote-bar .newreq-btn{background:#c0392b}
+  #mode-quotes.active{background:#c0392b;border-color:#c0392b;color:#fff}
+  #mode-quotes.active .nav-badge{background:#fff;color:#c0392b}
+  .sup-card>.tx-del~.sup-top{padding-inline-start:52px}
+  .q-new{background:#fbeae8;color:#c0392b}
+  .sup-card.pending.q-pending{border-color:#c0392b;box-shadow:0 0 0 1px #fbeae8}
+  .q-lines{padding:0 15px 8px}
+  .q-line{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .q-line small{color:var(--muted)}
+  .q-total{font-weight:900;border-bottom:none;color:#c0392b}
+  .q-wa{background:#25a35a}
+  .q-reassign{flex:1;min-width:150px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 8px;font-family:inherit;font-size:12.5px}
+  .mode-btn .nav-badge{vertical-align:middle}
   .cat-add-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
   .cat-add-bar .newreq-btn{background:#c0392b}
   .cat-new{position:absolute;top:6px;right:8px;font-size:10px;font-weight:700;color:#c0392b;background:#fbeae8;
@@ -695,6 +708,7 @@
     <button class="mode-btn" id="mode-arrival" onclick="setBranchMode('arrival')">📢 إبلاغ العميل</button>
     <button class="mode-btn" id="mode-supplies" onclick="setBranchMode('supplies')">🧰 طلب مستلزمات</button>
     <button class="mode-btn" id="mode-catalog" onclick="setBranchMode('catalog')">📘 الكتالوج</button>
+    <button class="mode-btn" id="mode-quotes" onclick="setBranchMode('quotes')">🧾 التسعيرات <span class="nav-badge" id="quoteBadge"></span></button>
   </div>
   <div id="partsView">
     <div class="tx-bar parts-bar">
@@ -738,6 +752,14 @@
       <span class="tx-hint">اطلب مستلزمات فرعك من الإدارة (أدوات، تغليف، قرطاسية…).</span>
     </div>
     <div class="list" id="supList"></div>
+  </div>
+  <div id="quotesView" class="hidden">
+    <div class="tx-bar quote-bar">
+      <button class="newreq-btn" onclick="copyQuoteLink()">🔗 نسخ رابط التسعيرة للزبون</button>
+      <span class="tx-hint">طلبات الزبائن من صفحة التسعيرة — رد عليهم بالواتساب.</span>
+    </div>
+    <div class="tabs" id="qTabs"></div>
+    <div class="list" id="qList"></div>
   </div>
   <div id="catalogView" class="hidden">
     <div class="cat-wrap">
@@ -796,6 +818,7 @@
     <button data-pane="overview" onclick="setMgrPane('overview')">📊 نظرة عامة</button>
     <button data-pane="transfers" onclick="setMgrPane('transfers')">💳 الحوالات <span class="nav-badge" id="navTxBadge"></span></button>
     <button data-pane="supplies" onclick="setMgrPane('supplies')">🧰 المستلزمات <span class="nav-badge" id="navSupBadge"></span></button>
+    <button data-pane="quotes" onclick="setMgrPane('quotes')">🧾 التسعيرات <span class="nav-badge" id="navQuoteBadge"></span></button>
     <button data-pane="catalog" onclick="setMgrPane('catalog')">📘 الكتالوج <span class="nav-badge" id="navCatBadge"></span></button>
     <button data-pane="log" onclick="setMgrPane('log')">📋 سجل الطلبات</button>
     <button data-pane="activity" onclick="setMgrPane('activity')">🕓 النشاط</button>
@@ -873,6 +896,19 @@
       <h3>طلبات المستلزمات <span id="supMgrCount" class="chip-count"></span></h3>
       <div class="perf-sub">المستلزمات التي طلبتها الفروع من الإدارة</div>
       <div id="mgrSuppliesList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
+    </section>
+  </div>
+
+  <!-- طلبات التسعيرة من الزبائن -->
+  <div class="mgr-body mgr-pane hidden" id="pane-quotes">
+    <section class="panel span-all">
+      <div class="log-header">
+        <h3>طلبات التسعيرة <span id="quoteMgrCount" class="chip-count" style="background:#c0392b"></span></h3>
+        <button class="export-btn" style="background:var(--txt)" onclick="copyQuoteLink()">🔗 نسخ رابط الصفحة</button>
+      </div>
+      <div class="perf-sub">طلبات الزبائن من صفحة التسعيرة — كل طلب يروح للفرع اللي اختاره الزبون، وتقدر تحوّله لفرع ثاني</div>
+      <div class="tabs" id="mgrQTabs" style="padding:0 0 4px"></div>
+      <div id="mgrQList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
     </section>
   </div>
 
@@ -1264,6 +1300,7 @@ auth.onAuthStateChanged(async user=>{
     supAttached=false; supRetries=0; if(supUnsub){ try{supUnsub();}catch(e){} supUnsub=null; } SUPPLIES=[];
     ARCH_REQS=[]; ARCH_TX=[]; archLoaded=false;
     actAttached=false; if(actUnsub){ try{actUnsub();}catch(e){} actUnsub=null; } ACTIVITY=[];
+    qAttached=false; if(qUnsub){ try{qUnsub();}catch(e){} qUnsub=null; } QUOTES=[]; qSeen=null;
     catAttached=false; catRetries=0; if(catUnsub){ try{catUnsub();}catch(e){} catUnsub=null; } CAT_ADDS=[]; catCache=null;
     if(typeof renderPinDots==="function") renderPinDots();
     if(typeof mRenderDots==="function") mRenderDots();
@@ -1274,7 +1311,7 @@ auth.onAuthStateChanged(async user=>{
   const email=(user.email||"").toLowerCase();
   IS_ADMIN = email==="admin@qrawi.app";
   if(email==="admin@qrawi.app"){
-    startListener(); startTxListener(); startSupListener(); startCatListener(); startActListener();
+    startListener(); startTxListener(); startSupListener(); startCatListener(); startActListener(); startQuoteListener();
     if(validName(ADMIN_NAME)) enterMgr();
     else { ["login","mgrLogin"].forEach(id=>$("#"+id).classList.add("hidden"));
       document.getElementById("adminNameInput").value=""; document.getElementById("adminNameOverlay").classList.add("show"); }
@@ -1286,7 +1323,7 @@ auth.onAuthStateChanged(async user=>{
     if(m){
       MY_BRANCH_ID=parseInt(m[1],10);
       const b=BRANCHES.find(x=>x.id===MY_BRANCH_ID);
-      startListener(); startTxListener(); startSupListener(); startCatListener();
+      startListener(); startTxListener(); startSupListener(); startCatListener(); startQuoteListener();
       if(b) enter(b);
     }
   }
@@ -1733,6 +1770,7 @@ function enterMgr(){
   renderMgrTransfers();
   renderMgrSupplies();
   renderMgrCatalog();
+  renderMgrQuotes();
   renderArchNotes();
   let pane="overview"; try{ pane=localStorage.getItem("mgrPane")||"overview"; }catch(e){}
   setMgrPane(pane);
@@ -1741,7 +1779,7 @@ function enterMgr(){
 }
 function mgrLogout(){ auth.signOut(); }  // onAuthStateChanged يعيد شاشة الدخول
 
-const MGR_PANES=["overview","transfers","supplies","catalog","log","activity"];
+const MGR_PANES=["overview","transfers","supplies","quotes","catalog","log","activity"];
 function setMgrPane(k){
   if(!MGR_PANES.includes(k)) k="overview";
   MGR_PANES.forEach(p=>document.getElementById("pane-"+p).classList.toggle("hidden",p!==k));
@@ -2091,11 +2129,14 @@ function setBranchMode(m){
   document.getElementById("suppliesView").classList.toggle("hidden",m!=="supplies");
   document.getElementById("mode-catalog").classList.toggle("active",m==="catalog");
   document.getElementById("catalogView").classList.toggle("hidden",m!=="catalog");
+  document.getElementById("mode-quotes").classList.toggle("active",m==="quotes");
+  document.getElementById("quotesView").classList.toggle("hidden",m!=="quotes");
   const fab=document.getElementById("fab"); if(fab) fab.style.display=(m==="parts")?"":"none";
   if(m==="transfers") renderBranchTransfers();
   if(m==="arrival") initArrivalForm();
   if(m==="supplies") renderBranchSupplies();
   if(m==="catalog") renderCatalog();
+  if(m==="quotes") renderBranchQuotes();
 }
 
 /* ===== الكتالوج: رموز السيارات + الأرقام العامة (البيانات في assets/catalog/catalog-data.js) ===== */
@@ -2792,6 +2833,125 @@ function renderActivity(){
       <div><b>${esc(a.action)}</b>${a.target?` — ${esc(a.target)}`:""}</div>
       <div class="act-meta">${esc(a.actor)} · ${new Date(a.t).toLocaleString("ar-SA",{dateStyle:"medium",timeStyle:"short"})}</div></div></div>`;
   }).join(""):`<div class="empty"><div class="ic">🕓</div>لا يوجد نشاط مسجّل بعد</div>`;
+}
+
+/* ===== طلبات التسعيرة (من صفحة quote.html للزبائن) ===== */
+let QUOTES=[], qAttached=false, qUnsub=null, qRetries=0, qSeen=null, qTab="new", mgrQTab="new";
+const Q_TABS=[{k:"new",label:"جديدة"},{k:"replied",label:"تم الرد"},{k:"all",label:"الكل"}];
+function startQuoteListener(){
+  if(qAttached) return; qAttached=true;
+  qUnsub=scopedQuery("quotes").onSnapshot(snap=>{
+    qRetries=0;
+    QUOTES=snap.docs.map(d=>{ const q=cleanNums(d.data());
+      q.items=(Array.isArray(q.items)?q.items:[]).map(i=>({t:String(i.t??""),p:num(i.p),q:num(i.q)||1}));
+      ["km","sub","vat","total","repliedAt"].forEach(k=>{ if(k in q) q[k]=num(q[k]); });
+      return q; }).sort((a,b)=>b.t-a.t);
+    // تنبيه داخل التطبيق لطلب تسعيرة جديد وصل الحين
+    const ids=new Set(QUOTES.map(q=>q.id));
+    if(qSeen && !IS_ADMIN){ const fresh=QUOTES.filter(q=>!qSeen.has(q.id)&&q.status==="new"); if(fresh.length) toast("🧾 طلب تسعيرة جديد من زبون"); }
+    qSeen=ids;
+    updateQuoteBadges();
+    const appEl=document.getElementById("app"), mgrEl=document.getElementById("mgr");
+    if(appEl && !appEl.classList.contains("hidden") && branchMode==="quotes") renderBranchQuotes();
+    if(mgrEl && !mgrEl.classList.contains("hidden")) renderMgrQuotes();
+  }, err=>{
+    console.warn("quotes snapshot:",err); qAttached=false;
+    if(qRetries<8){ qRetries++; setTimeout(()=>{ if(firebase.auth().currentUser) startQuoteListener(); },1500); }
+  });
+}
+function updateQuoteBadges(){
+  const n=me?QUOTES.filter(q=>q.branchId===me.id&&q.status==="new").length:0;   // واجهة الفرع (أو الإدارة داخلها)
+  const b=document.getElementById("quoteBadge"); if(b) b.textContent=n||"";
+  const all=QUOTES.filter(q=>q.status==="new").length;
+  const nb=document.getElementById("navQuoteBadge"); if(nb) nb.textContent=all||"";
+}
+function quoteLink(){ return location.origin+location.pathname.replace(/[^/]*$/,"")+"quote.html"; }
+function copyQuoteLink(){ catCopy(quoteLink()); }
+function waPhone(p){ return String(p||"").replace(/[^0-9]/g,"").replace(/^0/,"966"); }
+function quoteMsg(q){
+  const no=String(q.id).slice(-6), br=branchName(q.branchId);
+  const lines=q.items.map(i=>`• ${i.t}${i.q>1?" × "+i.q:""}: ${fmtAmount(i.p*i.q)} ر.س`).join("\n");
+  return `مرحباً${q.name?" "+q.name:""} 👋\nمعك فرع ${br} من القرعاوي بخصوص طلب التسعيرة رقم ${no}`+
+    ` (${q.make} ${q.model} ${q.year}):\n\n`+
+    (lines?lines+`\n\nالإجمالي شامل الضريبة: ${fmtAmount(q.total)} ر.س\n`:"")+
+    (q.extra?`\nالقطع الإضافية:\n• ${q.extra}: ___ ر.س\n`:"")+
+    `\nالأسعار حسب التوفّر — نسعد بخدمتك.`;
+}
+async function replyQuote(id){
+  const q=QUOTES.find(x=>x.id===id); if(!q) return;
+  window.open("https://wa.me/"+waPhone(q.phone)+"?text="+encodeURIComponent(quoteMsg(q)),"_blank");
+  if(q.status!=="replied"){
+    const by=IS_ADMIN?("الإدارة — "+(ADMIN_NAME||"")):branchName(me?me.id:q.branchId);
+    try{ await db.collection("quotes").doc(String(id)).update({status:"replied",repliedAt:Date.now(),repliedBy:by});
+      logActivity("رد على طلب تسعيرة", `${q.phone} · ${q.make} ${q.model} · ${branchName(q.branchId)}`); }
+    catch(e){ console.error(e); toast("انفتح الواتساب، لكن تعذّر تحديث الحالة"); }
+  }
+}
+async function reopenQuote(id){
+  try{ await db.collection("quotes").doc(String(id)).update({status:"new"}); }catch(e){ toast("تعذّر التحديث"); }
+}
+async function reassignQuote(id,branchId){
+  const q=QUOTES.find(x=>x.id===id); if(!q||+branchId===q.branchId) return;
+  try{ await db.collection("quotes").doc(String(id)).update({branchId:+branchId, notified:false, status:"new"});
+    logActivity("تحويل طلب تسعيرة", `${q.phone} · من ${branchName(q.branchId)} إلى ${branchName(+branchId)}`); toast("تم تحويل الطلب"); }
+  catch(e){ console.error(e); toast("تعذّر التحويل"); }
+}
+async function deleteQuote(id){
+  const q=QUOTES.find(x=>x.id===id); if(!q||!confirm("حذف طلب التسعيرة؟")) return;
+  try{ await db.collection("quotes").doc(String(id)).delete(); toast("تم الحذف");
+    logActivity("حذف طلب تسعيرة", `${q.phone} · ${q.make} ${q.model} · ${branchName(q.branchId)}`); }
+  catch(e){ console.error(e); toast("تعذّر الحذف"); }
+}
+function quoteCardHTML(q,forMgr){
+  const items=q.items.map(i=>`<div class="q-line"><span>${esc(i.t)}${i.q>1?` <small>× ${i.q}</small>`:""}</span><span>${fmtAmount(i.p*i.q)}</span></div>`).join("");
+  const st=q.status==="replied"?`<span class="tx-status tx-confirmed">تم الرد ✓</span>`:`<span class="tx-status q-new">جديد</span>`;
+  const car=[q.make,q.model,q.year].filter(Boolean).map(esc).join(" ");
+  const meta=[q.km?num(q.km).toLocaleString("en-US")+" كم":"", q.vin?`<span dir="ltr">${esc(q.vin)}</span>`:""].filter(Boolean).join(" · ");
+  const reassign=forMgr?`<select class="q-reassign" onchange="reassignQuote(${q.id},this.value)">`+
+    BRANCHES.map(b=>`<option value="${b.id}"${b.id===q.branchId?" selected":""}>${b.name}</option>`).join("")+`</select>`:"";
+  const del=IS_ADMIN?`<button class="tx-del" onclick="deleteQuote(${q.id})" title="حذف">🗑</button>`:"";
+  return `<div class="sup-card ${q.status==="replied"?"":"pending q-pending"}">${del}
+    <div class="sup-top" style="align-items:flex-start">
+      <div style="min-width:0">
+        ${forMgr?`<div class="sup-branch" style="color:#c0392b">${branchName(q.branchId)}</div>`:""}
+        <div style="font-size:15px;font-weight:700">${q.name?esc(q.name)+" · ":""}<span dir="ltr">${esc(q.phone)}</span></div>
+        <div style="font-size:12.5px;color:var(--muted)">🚗 ${car}${meta?" · "+meta:""} · ${timeAgo(q.t)}</div>
+      </div>${st}
+    </div>
+    ${items?`<div class="q-lines">${items}<div class="q-line q-total"><span>الإجمالي شامل الضريبة</span><span>${fmtAmount(q.total)} ر.س</span></div></div>`:""}
+    ${q.extra?`<div class="sup-note">📝 قطع إضافية: ${esc(q.extra)}</div>`:""}
+    ${q.repliedBy&&q.status==="replied"?`<div class="sup-note">رد عليه: ${esc(q.repliedBy)}${q.repliedAt?" · "+timeAgo(q.repliedAt):""}</div>`:""}
+    <div class="sup-foot" style="gap:8px;flex-wrap:wrap">${reassign}
+      ${q.status==="replied"?`<button class="ca-rej" style="background:var(--soft);color:var(--muted)" onclick="reopenQuote(${q.id})">↩ إرجاع لجديد</button>`:""}
+      <button class="sup-done-btn q-wa" onclick="replyQuote(${q.id})">💬 ${q.status==="replied"?"راسله مرة ثانية":"رد بالواتساب"}</button>
+    </div>
+  </div>`;
+}
+function filterQuotes(list,k){ return k==="all"?list:list.filter(q=>q.status===k); }
+function quoteTabsHTML(list,cur,fn){
+  return Q_TABS.map(t=>{ const n=filterQuotes(list,t.k).length;
+    return `<button class="tab ${cur===t.k?'active':''}" onclick="${fn}('${t.k}')">${t.label}${n?` <span class="cnt">${n}</span>`:''}</button>`; }).join("");
+}
+function setQTab(k){ qTab=k; renderBranchQuotes(); }
+function setMgrQTab(k){ mgrQTab=k; renderMgrQuotes(); }
+function renderBranchQuotes(){
+  const el=document.getElementById("qList"); if(!el||!me) return;
+  const mine=QUOTES.filter(q=>q.branchId===me.id);
+  document.getElementById("qTabs").innerHTML=quoteTabsHTML(mine,qTab,"setQTab");
+  const rows=filterQuotes(mine,qTab);
+  el.innerHTML=rows.length?rows.map(q=>quoteCardHTML(q,false)).join("")
+    :`<div class="empty"><div class="ic">🧾</div>${qTab==="new"?"لا توجد طلبات تسعيرة جديدة":"لا توجد طلبات هنا"}<br><small>أرسل رابط التسعيرة لزبائنك بزر «نسخ الرابط» فوق</small></div>`;
+  updateQuoteBadges();
+}
+function renderMgrQuotes(){
+  const el=document.getElementById("mgrQList"); if(!el) return;
+  document.getElementById("mgrQTabs").innerHTML=quoteTabsHTML(QUOTES,mgrQTab,"setMgrQTab");
+  const n=QUOTES.filter(q=>q.status==="new").length;
+  document.getElementById("quoteMgrCount").textContent=n?n+" جديد":"";
+  const rows=filterQuotes(QUOTES,mgrQTab);
+  el.innerHTML=rows.length?rows.map(q=>quoteCardHTML(q,true)).join("")
+    :`<div class="empty" style="grid-column:1/-1"><div class="ic">🧾</div>لا توجد طلبات تسعيرة ${mgrQTab==="new"?"جديدة":""}</div>`;
+  updateQuoteBadges();
 }
 
 boot();

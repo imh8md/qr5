@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>القرعاوي · طلب تسعيرة</title>
+<meta name="theme-color" content="#f5f4ef">
+<link rel="icon" href="assets/logo.png">
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<style>
+@font-face{font-family:'Thmanyah Sans';font-weight:400;font-display:swap;src:url(assets/fonts/thmanyahsans-Regular.woff2) format('woff2')}
+@font-face{font-family:'Thmanyah Sans';font-weight:500;font-display:swap;src:url(assets/fonts/thmanyahsans-Medium.woff2) format('woff2')}
+@font-face{font-family:'Thmanyah Sans';font-weight:700;font-display:swap;src:url(assets/fonts/thmanyahsans-Bold.woff2) format('woff2')}
+@font-face{font-family:'Thmanyah Sans';font-weight:900;font-display:swap;src:url(assets/fonts/thmanyahsans-Black.woff2) format('woff2')}
+:root{
+  --bg:#f5f4ef; --panel:#ffffff; --soft:#f0eee7; --line:#e5e2d8;
+  --gold:#cc785c; --gold-soft:#f6e8e1; --red:#c0392b; --red-soft:#fbeae8;
+  --txt:#1f1e1b; --muted:#8a8175; --ok:#3d9a63; --err:#bf4d3a;
+  --r-lg:20px; --r-md:14px; --max:960px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:76px}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:'Thmanyah Sans',"Segoe UI",Tahoma,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 20px}
+.hidden{display:none!important}
+
+/* شريط علوي */
+.nav{position:sticky;top:0;z-index:20;background:rgba(245,244,239,.9);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+.nav::before{content:"";display:block;height:4px;background:var(--red)}
+.nav .wrap{height:60px;display:flex;align-items:center;justify-content:space-between}
+.nav img{height:38px;display:block}
+.nav nav a{color:var(--muted);text-decoration:none;font-size:14px;font-weight:500;margin-inline-start:18px}
+.nav nav a:hover{color:var(--txt)}
+@media(max-width:520px){.nav nav{display:none}}
+
+/* الواجهة */
+.hero{text-align:center;padding:54px 0 40px}
+.hero .badge{display:inline-block;background:var(--red-soft);color:var(--red);font-weight:700;font-size:13px;padding:5px 14px;border-radius:20px;margin-bottom:14px}
+.hero h1{font-weight:900;font-size:clamp(34px,7vw,56px);line-height:1.15;margin:0}
+.hero h1 span{color:var(--red)}
+.hero p{font-size:clamp(16px,2.6vw,19px);color:var(--muted);margin:14px auto 0;max-width:34ch}
+
+/* الأقسام */
+.sec{padding:10px 0 34px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r-lg);padding:26px 24px 28px}
+@media(max-width:520px){.card{padding:20px 16px 22px}}
+.step{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.step .n{width:34px;height:34px;border-radius:50%;background:var(--red);color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+.step h2{font-weight:900;font-size:clamp(22px,4vw,28px);margin:0}
+.lead{color:var(--muted);margin:6px 0 22px;font-size:14.5px}
+
+/* الحقول */
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+.grid .full{grid-column:1/-1}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.field label{display:block;font-size:13.5px;font-weight:700;margin:0 4px 7px}
+.field label i{font-style:normal;color:var(--muted);font-weight:400}
+.field .hint{font-size:12.5px;color:var(--muted);margin:6px 4px 0}
+.field .msg{font-size:12.5px;color:var(--err);margin:6px 4px 0;display:none}
+.field.bad .msg{display:block}
+.field.bad .ctl{border-color:var(--err)}
+.ctl{width:100%;height:52px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--soft);padding:0 15px;font-size:16px;appearance:none;-webkit-appearance:none;outline:none;transition:border-color .15s,box-shadow .15s}
+textarea.ctl{height:auto;min-height:92px;padding:12px 15px;resize:vertical}
+.ctl:focus{border-color:var(--gold);background:#fff;box-shadow:0 0 0 4px var(--gold-soft)}
+.ctl:disabled{opacity:.6}
+select.ctl{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238a8175' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:left 16px center;padding-left:40px}
+.ltr{direction:ltr;text-align:right}
+.unit{position:relative}.unit .ctl{padding-left:52px}.unit span{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
+.hp{position:absolute;width:1px;height:1px;padding:0;border:0;opacity:0;overflow:hidden;clip:rect(0 0 0 0);pointer-events:none}
+
+/* التبويبات */
+.seg{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:18px;padding-bottom:2px}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:none;border:1px solid var(--line);background:var(--panel);border-radius:22px;padding:8px 16px;font-size:14px;font-weight:700;color:var(--muted);cursor:pointer;white-space:nowrap}
+.seg button[aria-selected="true"]{background:var(--red);border-color:var(--red);color:#fff}
+.seg .c{display:inline-block;min-width:18px;height:18px;line-height:18px;border-radius:9px;background:var(--txt);color:#fff;font-size:11px;margin-inline-start:6px;padding:0 5px;text-align:center}
+.seg button[aria-selected="true"] .c{background:#fff;color:var(--red)}
+
+/* بطاقات الاختيار */
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media(max-width:640px){.opts{grid-template-columns:1fr}}
+.opt{position:relative;text-align:right;background:var(--panel);border:1.5px solid var(--line);border-radius:var(--r-md);padding:15px 16px 14px;cursor:pointer;display:flex;flex-direction:column;gap:3px;transition:border-color .15s,background .15s;-webkit-tap-highlight-color:transparent}
+.opt:hover{border-color:#cfc9bb}
+.opt:focus-visible{outline:3px solid var(--gold-soft);outline-offset:2px}
+.opt .t{font-weight:700;font-size:15.5px;padding-inline-end:34px}
+.opt .d{color:var(--muted);font-size:13px}
+.opt .p{margin-top:6px;font-weight:900;color:var(--red)}
+.opt .tick{position:absolute;top:14px;left:14px;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900}
+.opt[aria-pressed="true"]{border-color:var(--red);background:var(--red-soft)}
+.opt[aria-pressed="true"] .tick{background:var(--red);border-color:var(--red)}
+.qty{display:none;align-items:center;gap:10px;margin-top:8px}
+.opt[aria-pressed="true"] .qty{display:flex}
+.qty button{width:32px;height:32px;border-radius:9px;border:none;background:var(--red);color:#fff;cursor:pointer;font-size:18px;font-weight:700;line-height:1}
+.qty b{min-width:22px;text-align:center}
+
+/* الملخص */
+.lines{list-style:none;margin:0;padding:0}
+.lines li{display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px dashed var(--line)}
+.lines li .q{color:var(--muted);font-size:13px}
+.empty{color:var(--muted);padding:12px 0}
+.tot{margin-top:14px}
+.tot div{display:flex;justify-content:space-between;padding:5px 0;color:var(--muted);font-size:15px}
+.tot .grand{color:var(--txt);border-top:2px solid var(--txt);margin-top:10px;padding-top:14px;align-items:baseline}
+.tot .grand b{font-weight:900;font-size:32px;color:var(--red)}
+.actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.btn{border:0;border-radius:12px;height:52px;padding:0 24px;font-size:16px;font-weight:700;cursor:pointer}
+.btn.pri{background:var(--red);color:#fff;flex:1 1 220px}
+.btn.pri:active{transform:scale(.98)}
+.btn.sec{background:var(--panel);color:var(--txt);border:1px solid var(--line)}
+.btn[disabled]{opacity:.45;cursor:default}
+.note{font-size:12.5px;color:var(--muted);margin-top:12px}
+
+/* الشريط السفلي */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);transform:translateY(110%);transition:transform .3s ease}
+.bar.on{transform:none}
+.bar .wrap{height:66px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bar .k{font-size:12.5px;color:var(--muted)}
+.bar .v{font-size:21px;font-weight:900;line-height:1.1;color:var(--red)}
+.bar .btn{height:44px;padding:0 18px;font-size:14.5px;background:var(--txt);color:#fff}
+footer{padding:30px 0 110px;color:var(--muted);font-size:13px;text-align:center}
+footer img{height:30px;opacity:.7;display:block;margin:0 auto 8px}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--txt);color:#fff;border-radius:12px;padding:11px 18px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:40;white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis}
+.toast.on{opacity:1}
+
+/* نجاح الإرسال */
+.done{text-align:center;padding:70px 20px 60px}
+.done .ic{width:76px;height:76px;border-radius:50%;background:#e8f3ec;color:var(--ok);font-size:38px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.done h2{font-weight:900;font-size:28px;margin:0}
+.done p{color:var(--muted);margin:10px auto 0;max-width:36ch}
+.done .no{display:inline-block;margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 18px;font-weight:700;direction:ltr}
+.done .actions{justify-content:center}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* عرض السعر PDF (يُرسم خارج الشاشة) */
+#inv{position:fixed;left:-10000px;top:0;width:794px;min-height:1120px;background:#fff;color:#1f1e1b;font-family:'Thmanyah Sans',sans-serif;padding:0 60px 50px;direction:rtl}
+#inv .redbar{height:8px;background:#c0392b;margin:0 -60px 40px}
+#inv .top{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:3px solid #1f1e1b}
+#inv .top img{height:64px;display:block}
+#inv .co{font-size:12px;color:#8a8175;margin-top:8px;line-height:1.7}
+#inv .doc{text-align:left}
+#inv .doc h1{font-size:32px;margin:0;line-height:1;font-weight:900}
+#inv .doc div{font-size:12px;color:#8a8175;margin-top:8px;line-height:1.8}
+#inv .boxes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:24px 0}
+#inv .box{background:#f5f4ef;border-radius:12px;padding:14px 16px}
+#inv .box h3{font-size:12px;color:#8a8175;font-weight:500;margin:0 0 6px}
+#inv .box p{margin:0;font-size:13px;line-height:1.9}
+#inv table{width:100%;border-collapse:collapse;font-size:13px}
+#inv th{background:#1f1e1b;color:#fff;font-weight:500;padding:10px 12px;text-align:right}
+#inv th.n,#inv td.n{text-align:left;width:110px}
+#inv th.q,#inv td.q{text-align:center;width:60px}
+#inv td{padding:10px 12px;border-bottom:1px solid #e5e2d8}
+#inv td small{color:#8a8175}
+#inv .extra{margin-top:14px;font-size:12.5px;background:#f5f4ef;border-radius:10px;padding:10px 14px;line-height:1.8}
+#inv .tt{width:300px;margin-right:auto;margin-top:18px;font-size:13px}
+#inv .tt div{display:flex;justify-content:space-between;padding:6px 0;color:#8a8175}
+#inv .tt .g{color:#1f1e1b;font-weight:700;font-size:16px;border-top:2px solid #1f1e1b;margin-top:8px;padding-top:12px}
+#inv .tt .g span:last-child{background:#c0392b;color:#fff;padding:2px 10px;border-radius:6px}
+#inv .foot{margin-top:40px;padding-top:14px;border-top:1px solid #e5e2d8;font-size:11px;color:#8a8175;line-height:1.8;display:flex;justify-content:space-between}
+@media print{body>*:not(#inv){display:none!important}#inv{position:static;left:0}}
+</style>
+</head>
+<body>
+
+<header class="nav"><div class="wrap">
+  <a href="#top"><img src="assets/logo.png" alt="القرعاوي"></a>
+  <nav><a href="#car">بياناتك</a><a href="#items">القطع والخدمات</a><a href="#sum">الملخص</a></nav>
+</div></header>
+
+<main id="top">
+<div id="formView">
+<section class="hero"><div class="wrap">
+  <span class="badge">طلب تسعيرة</span>
+  <h1>تسعيرة سيارتك<br>من <span>القرعاوي</span></h1>
+  <p>عبّئ بيانات سيارتك، واختر اللي تحتاجه، وأرسل الطلب — يرد عليك الفرع على الواتساب.</p>
+</div></section>
+
+<section class="sec" id="car"><div class="wrap"><div class="card">
+  <div class="step"><span class="n">١</span><h2>بياناتك وسيارتك</h2></div>
+  <p class="lead">نحتاج هذي البيانات عشان نطلع لك عرض سعر دقيق ونتواصل معك.</p>
+  <div class="grid">
+    <div class="field" id="f-name"><label for="cname">الاسم <i>(اختياري)</i></label><input class="ctl" id="cname" maxlength="40" autocomplete="name" placeholder="اسمك"></div>
+    <div class="field" id="f-phone"><label for="phone">رقم الجوال (واتساب)</label><input class="ctl ltr" id="phone" inputmode="numeric" autocomplete="tel" placeholder="05XXXXXXXX" maxlength="10"><div class="msg">اكتب رقم جوال يبدأ بـ 05 ومكوّن من ١٠ أرقام</div></div>
+    <div class="field full" id="f-branch"><label for="branch">الفرع</label><select class="ctl" id="branch"><option value="">اختر أقرب فرع لك</option></select><div class="msg">اختر الفرع</div></div>
+    <div class="field" id="f-make"><label for="make">شركة السيارة</label><select class="ctl" id="make"><option value="">اختر الشركة</option></select><div class="msg">اختر شركة السيارة</div></div>
+    <div class="field" id="f-model"><label for="model">نوع السيارة</label><select class="ctl" id="model" disabled><option value="">اختر الشركة أولًا</option></select><div class="msg">اختر نوع السيارة</div></div>
+    <div class="field" id="f-year"><label for="year">الموديل</label><select class="ctl" id="year"><option value="">اختر سنة الصنع</option></select><div class="msg">اختر الموديل</div></div>
+    <div class="field" id="f-km"><label for="km">ممشى السيارة <i>(اختياري)</i></label><div class="unit"><input class="ctl ltr" id="km" inputmode="numeric" placeholder="مثال: 85,000"><span>كم</span></div></div>
+    <div class="field full" id="f-vin"><label for="vin">رقم الهيكل (VIN) <i>(اختياري — يساعدنا نحدد القطعة الصحيحة)</i></label><input class="ctl ltr" id="vin" maxlength="17" placeholder="17 حرف ورقم" style="text-transform:uppercase"></div>
+    <input class="hp" id="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+  </div>
+</div></div></section>
+
+<section class="sec" id="items"><div class="wrap"><div class="card">
+  <div class="step"><span class="n">٢</span><h2>القطع والخدمات</h2></div>
+  <p class="lead">اضغط على أي بطاقة لإضافتها، واضغط مرة ثانية لإزالتها.</p>
+  <div class="seg" role="tablist" id="tabs"></div>
+  <div class="opts" id="opts" role="tabpanel"></div>
+  <div class="field full" style="margin-top:20px"><label for="extra">قطع ثانية تبي تسعيرها <i>(اختياري)</i></label>
+    <textarea class="ctl" id="extra" maxlength="600" placeholder="اكتب اسم القطعة أو رقمها، مثال: فحمات أمامية كامري 2018 — طقم مساعدات خلفية"></textarea>
+    <div class="hint">الفرع يسعّرها لك ويرسل السعر مع الرد.</div></div>
+</div></div></section>
+
+<section class="sec" id="sum"><div class="wrap"><div class="card">
+  <div class="step"><span class="n">٣</span><h2>الملخص</h2></div>
+  <p class="lead" id="sumLead">السعر التقديري شامل ضريبة القيمة المضافة.</p>
+  <ul class="lines" id="lines"></ul>
+  <div class="empty" id="empty">ما اخترت شي من البطاقات للحين — تقدر تكتب القطع اللي تبيها في خانة «قطع ثانية».</div>
+  <div class="tot" id="tot">
+    <div><span>المجموع قبل الضريبة</span><span id="t-sub"></span></div>
+    <div id="feeRow"><span>رسوم الخدمة</span><span id="t-fee"></span></div>
+    <div><span id="t-vat-l">ضريبة القيمة المضافة</span><span id="t-vat"></span></div>
+    <div class="grand"><span>الإجمالي التقديري</span><b id="t-total"></b></div>
+  </div>
+  <div class="actions">
+    <button class="btn pri" id="sendBtn">إرسال الطلب للفرع</button>
+    <button class="btn sec" id="pdfBtn">تحميل عرض السعر PDF</button>
+    <button class="btn sec" id="clearBtn">مسح</button>
+  </div>
+  <p class="note">الأسعار تقديرية، ويؤكدها الفرع قبل التنفيذ حسب توفّر القطع.</p>
+</div></div></section>
+</div>
+
+<section class="done hidden" id="doneView"><div class="wrap">
+  <div class="ic">✓</div>
+  <h2>وصلنا طلبك</h2>
+  <p id="doneTxt">بيتواصل معك الفرع على الواتساب بالأسعار في أقرب وقت.</p>
+  <div class="no" id="doneNo"></div>
+  <div class="actions"><button class="btn sec" id="doneNew">طلب تسعيرة جديد</button></div>
+</div></section>
+</main>
+
+<footer><div class="wrap"><img src="assets/logo.png" alt="">القرعاوي — قطع غيار تويوتا الأصلية</div></footer>
+
+<div class="bar" id="bar"><div class="wrap">
+  <div><div class="k" id="barK">لا توجد عناصر</div><div class="v" id="barV">0 ر.س</div></div>
+  <button class="btn" id="barBtn">عرض الملخص</button>
+</div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div id="inv" aria-hidden="true"></div>
+
+<script>
+/* ======= إعدادات التسعيرة: عدّل الأسعار والبيانات من هنا ======= */
+var CONFIG={
+  company:{ name:"القرعاوي لقطع غيار تويوتا", city:"القصيم", phone:"", vat:"", cr:"" },
+  serviceFee:0,        // رسوم خدمة ثابتة (ريال) — 0 يخفي السطر
+  vatRate:0.15,        // ضريبة القيمة المضافة
+  validDays:7,         // صلاحية عرض السعر بالأيام
+  currency:"ر.س"
+};
+// ⚠ أسعار مبدئية من النموذج — تُستبدل بأسعار القرعاوي الفعلية
+var CATALOG=[
+ {id:"oil",name:"الزيوت",items:[
+  {id:"o1",t:"زيت تويوتا 0W-20",d:"٤ لتر · لأغلب السيارات الحديثة",p:165},
+  {id:"o2",t:"زيت تويوتا 5W-30",d:"٥ لتر · للمحركات الأكبر",p:189},
+  {id:"o3",t:"زيت تويوتا 5W-40 ذهبي",d:"٤ لتر",p:120},
+  {id:"o4",t:"زيت تويوتا 10W-40",d:"٤ لتر",p:85},
+  {id:"o5",t:"لتر زيت إضافي",d:"للمحركات الكبيرة",p:32,qty:true}
+ ]},
+ {id:"flt",name:"الفلاتر",items:[
+  {id:"f1",t:"فلتر زيت",d:"يُغيّر مع كل زيت",p:35,qty:true},
+  {id:"f2",t:"فلتر هواء",d:"للمحرك",p:55},
+  {id:"f3",t:"فلتر مكيف",d:"لهواء المقصورة",p:45},
+  {id:"f4",t:"فلتر بنزين",d:"",p:70}
+ ]},
+ {id:"brk",name:"الفرامل",items:[
+  {id:"b1",t:"فحمات أمامية",d:"طقم كامل",p:180},
+  {id:"b2",t:"فحمات خلفية",d:"طقم كامل",p:150},
+  {id:"b3",t:"هوبات أمامية",d:"للزوج",p:320},
+  {id:"b4",t:"زيت فرامل DOT3",d:"354 مل",p:25,qty:true}
+ ]},
+ {id:"bat",name:"البطاريات",items:[
+  {id:"a1",t:"بطارية ٧٠ أمبير",d:"",p:380},
+  {id:"a2",t:"بطارية ٨٠ أمبير",d:"",p:450},
+  {id:"a3",t:"بطارية ١٠٠ أمبير",d:"",p:560}
+ ]},
+ {id:"liq",name:"السوائل",items:[
+  {id:"l1",t:"ماء رديتر Long Life",d:"تويوتا الأصلي",p:45,qty:true},
+  {id:"l2",t:"زيت قير أوتوماتيك ATF",d:"٤ لتر",p:160},
+  {id:"l3",t:"منظف بخاخات",d:"266 مل",p:40,qty:true}
+ ]}
+];
+var CARS={
+ "تويوتا":["كامري","كورولا","يارس","أفالون","راف فور","هايلاندر","فورتشنر","لاندكروزر","برادو","هايلكس","شاص","ربع","هاي إيس","سيكويا","FJ","إنوفا","كراون"],
+ "لكزس":["ES","IS","LS","RX","NX","GX","LX"],
+ "هيونداي":["أكسنت","إلنترا","سوناتا","أزيرا","كريتا","توسان","سنتافي","باليسيد"],
+ "كيا":["بيجاس","ريو","سيراتو","K5","K8","سبورتاج","سورينتو","تيلورايد"],
+ "نيسان":["صني","سنترا","ألتيما","ماكسيما","إكس تريل","باثفايندر","باترول","نافارا"],
+ "هوندا":["سيتي","سيفيك","أكورد","CR-V","بايلوت"],
+ "مازدا":["مازدا 3","مازدا 6","CX-5","CX-9"],
+ "ميتسوبيشي":["أتراج","لانسر","إكسباندر","آوتلاندر","مونتيرو سبورت","L200"],
+ "شيفروليه":["سبارك","ماليبو","كابتيفا","تاهو","سوبربان","سيلفرادو"],
+ "جي إم سي":["تيرين","أكاديا","يوكن","سييرا"],
+ "فورد":["توروس","فيوجن","إكسبلورر","إكسبديشن","F-150","رينجر"],
+ "أخرى":["أخرى"]
+};
+var BRANCHES=[
+ {id:1,name:"بريدة – المستودع الإقليمي"},{id:2,name:"بريدة – الشارع التجاري"},{id:3,name:"بريدة – طريق الملك عبدالعزيز (الخبيب)"},
+ {id:4,name:"بريدة – صناعية السليم 1"},{id:5,name:"الزلفي – مدخل الصناعية"},{id:6,name:"الرس – مقابل شركة الكهرباء"},
+ {id:7,name:"عنيزة – الصناعية"},{id:8,name:"بريدة – صناعية السليم 2"},{id:9,name:"حفر الباطن – الصناعية"},
+ {id:10,name:"بريدة – صناعية الرواف"},{id:11,name:"بريدة – المركز الرئيسي"},{id:12,name:"حائل – صناعية الجربوع"},
+ {id:13,name:"المدينة – العزيزية طريق الجامعات"},{id:14,name:"جدة – كيلو 14 مجمع الورش"},{id:15,name:"جدة – قويزة"},
+ {id:16,name:"المجمعة"},{id:17,name:"المدينة – عروة"},{id:18,name:"مكة – صناعية الدواس القديمة"},{id:19,name:"الجوف – سكاكا"},{id:20,name:"الطائف"}
+];
+/* ============================================================ */
+
+firebase.initializeApp({
+  apiKey:"AIzaSyCWyqw92zhtgvaZJdzo84QfdqCGrdDR6Mk", authDomain:"qarawi-parts.firebaseapp.com", projectId:"qarawi-parts",
+  storageBucket:"qarawi-parts.firebasestorage.app", messagingSenderId:"813028198693", appId:"1:813028198693:web:abad865eb7cf174016b2cc"
+});
+var db=firebase.firestore();
+
+var $=function(s){return document.querySelector(s)};
+var state={sel:{},tab:CATALOG[0].id};
+var num=function(n){return (Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})};
+var fmt=function(n){return num(n)+' '+CONFIG.currency};
+var AR='٠١٢٣٤٥٦٧٨٩',ar=function(n){return String(n).replace(/\d/g,function(d){return AR[d]})};
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+var itemById={};CATALOG.forEach(function(c){c.items.forEach(function(i){i.cat=c.id;itemById[i.id]=i})});
+
+// القوائم
+var make=$('#make'),model=$('#model'),year=$('#year'),km=$('#km'),branch=$('#branch');
+BRANCHES.forEach(function(b){branch.add(new Option(b.name,String(b.id)))});
+try{ var lastB=localStorage.getItem('quoteBranch'); if(lastB) branch.value=lastB; }catch(e){}
+Object.keys(CARS).forEach(function(m){make.add(new Option(m,m))});
+for(var y=new Date().getFullYear()+1;y>=1990;y--)year.add(new Option(String(y),String(y)));
+make.addEventListener('change',function(){
+  model.innerHTML='';
+  if(!make.value){model.add(new Option('اختر الشركة أولًا',''));model.disabled=true;return}
+  model.add(new Option('اختر النوع',''));CARS[make.value].forEach(function(m){model.add(new Option(m,m))});model.disabled=false;ok('f-make');
+});
+model.addEventListener('change',function(){if(model.value)ok('f-model')});
+year.addEventListener('change',function(){if(year.value)ok('f-year')});
+branch.addEventListener('change',function(){if(branch.value)ok('f-branch')});
+$('#phone').addEventListener('input',function(e){e.target.value=e.target.value.replace(/[٠-٩]/g,function(d){return AR.indexOf(d)}).replace(/\D/g,'').slice(0,10);if(/^05\d{8}$/.test(e.target.value))ok('f-phone')});
+$('#vin').addEventListener('input',function(e){e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,17)});
+km.addEventListener('input',function(e){var v=e.target.value.replace(/[٠-٩]/g,function(d){return AR.indexOf(d)}).replace(/\D/g,'').slice(0,7);e.target.value=v?Number(v).toLocaleString('en-US'):''});
+function kmVal(){return Number(km.value.replace(/\D/g,''))||0}
+function ok(id){$('#'+id).classList.remove('bad')}
+
+// التبويبات والبطاقات
+var tabs=$('#tabs'),opts=$('#opts');
+function renderTabs(){
+  tabs.innerHTML='';
+  CATALOG.forEach(function(c){
+    var n=c.items.filter(function(i){return state.sel[i.id]}).length;
+    var b=document.createElement('button');b.type='button';b.setAttribute('role','tab');b.setAttribute('aria-selected',String(state.tab===c.id));
+    b.innerHTML=esc(c.name)+(n?'<span class="c">'+n+'</span>':'');
+    b.onclick=function(){state.tab=c.id;renderTabs();renderOpts()};tabs.appendChild(b);
+  });
+}
+function renderOpts(){
+  opts.innerHTML='';
+  CATALOG.filter(function(c){return c.id===state.tab})[0].items.forEach(function(it){
+    var on=!!state.sel[it.id];
+    var el=document.createElement('div');el.className='opt';el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-pressed',String(on));
+    el.innerHTML='<span class="tick">'+(on?'✓':'')+'</span><span class="t">'+esc(it.t)+'</span>'+(it.d?'<span class="d">'+esc(it.d)+'</span>':'')+'<span class="p">'+fmt(it.p)+'</span>'
+      +(it.qty?'<span class="qty"><button type="button" data-a="+" aria-label="زيادة">+</button><b>'+(state.sel[it.id]||1)+'</b><button type="button" data-a="-" aria-label="إنقاص">−</button></span>':'');
+    el.addEventListener('click',function(e){
+      var a=e.target.closest('button');
+      if(a){e.stopPropagation();var q=state.sel[it.id]||1;q=a.dataset.a==='+'?Math.min(20,q+1):Math.max(1,q-1);state.sel[it.id]=q;update();return}
+      toggle(it);
+    });
+    el.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(it)}});
+    opts.appendChild(el);
+  });
+}
+function toggle(it){ if(state.sel[it.id])delete state.sel[it.id]; else state.sel[it.id]=1; update(); }
+function calc(){
+  var lines=Object.keys(state.sel).map(function(id){var it=itemById[id],q=state.sel[id];return {it:it,q:q,total:it.p*q}});
+  var sub=lines.reduce(function(a,l){return a+l.total},0);
+  var fee=lines.length?CONFIG.serviceFee:0;
+  var vat=(sub+fee)*CONFIG.vatRate;
+  return {lines:lines,sub:sub,fee:fee,vat:vat,total:sub+fee+vat};
+}
+function update(){
+  renderTabs();renderOpts();
+  var c=calc(),L=$('#lines');L.innerHTML='';
+  c.lines.forEach(function(l){var li=document.createElement('li');li.innerHTML='<span>'+esc(l.it.t)+(l.q>1?' <span class="q">× '+l.q+'</span>':'')+'</span><span>'+fmt(l.total)+'</span>';L.appendChild(li)});
+  $('#empty').style.display=c.lines.length?'none':'block';
+  $('#tot').style.display=c.lines.length?'':'none';
+  $('#feeRow').style.display=CONFIG.serviceFee?'':'none';
+  $('#t-sub').textContent=fmt(c.sub);$('#t-fee').textContent=fmt(c.fee);
+  $('#t-vat-l').textContent='ضريبة القيمة المضافة '+Math.round(CONFIG.vatRate*100)+'%';$('#t-vat').textContent=fmt(c.vat);$('#t-total').textContent=fmt(c.total);
+  $('#pdfBtn').disabled=!c.lines.length;
+  var n=c.lines.length;$('#barK').textContent=n?(n===1?'عنصر واحد':ar(n)+' عناصر'):'لا توجد عناصر';$('#barV').textContent=fmt(c.total);
+  $('#bar').classList.toggle('on',n>0);
+}
+$('#clearBtn').onclick=function(){state.sel={};$('#extra').value='';update();toast('تم مسح الاختيارات')};
+$('#barBtn').onclick=function(){$('#sum').scrollIntoView({behavior:'smooth'})};
+function toast(t){var el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(function(){el.classList.remove('on')},2600)}
+
+// التحقق
+function validate(needBranch){
+  var bad=[];
+  if(!/^05\d{8}$/.test($('#phone').value))bad.push('f-phone');
+  if(needBranch&&!branch.value)bad.push('f-branch');
+  if(!make.value)bad.push('f-make');
+  if(!model.value)bad.push('f-model');
+  if(!year.value)bad.push('f-year');
+  bad.forEach(function(id){$('#'+id).classList.add('bad')});
+  if(bad.length){$('#'+bad[0]).scrollIntoView({behavior:'smooth',block:'center'});toast('أكمل بياناتك وبيانات السيارة أولًا')}
+  return !bad.length;
+}
+
+// إرسال الطلب للفرع (يصل لقسم «التسعيرات» في نظام الفروع)
+$('#sendBtn').onclick=async function(){
+  if(!validate(true))return;
+  var c=calc(), extra=$('#extra').value.trim();
+  if(!c.lines.length&&!extra){ $('#items').scrollIntoView({behavior:'smooth'}); toast('اختر قطعة أو اكتب القطع اللي تبيها'); return; }
+  if($('#website').value){ showDone('—'); return; }   // فخ للروبوتات
+  try{ var last=+localStorage.getItem('quoteLast')||0; if(Date.now()-last<60000){ toast('أرسلت طلب قبل شوي — انتظر دقيقة'); return; } }catch(e){}
+  var btn=this; btn.disabled=true; var old=btn.textContent; btn.textContent='جارٍ الإرسال…';
+  try{
+    if(!firebase.auth().currentUser) await firebase.auth().signInAnonymously();
+    var now=Date.now(), id=now*1000+Math.floor(Math.random()*1000);
+    var q={ id:id, t:now, status:"new", notified:false, source:"quote-page",
+      branchId:+branch.value, name:$('#cname').value.trim().slice(0,40), phone:$('#phone').value,
+      make:make.value, model:model.value, year:year.value, km:kmVal(), vin:$('#vin').value,
+      items:c.lines.map(function(l){return {t:l.it.t,p:l.it.p,q:l.q}}), extra:extra.slice(0,600),
+      sub:Math.round(c.sub*100)/100, vat:Math.round(c.vat*100)/100, total:Math.round(c.total*100)/100 };
+    await db.collection("quotes").doc(String(id)).set(q);
+    try{ localStorage.setItem('quoteLast',String(now)); localStorage.setItem('quoteBranch',branch.value); }catch(e){}
+    showDone(String(id).slice(-6));
+  }catch(e){ console.error(e); toast('تعذّر الإرسال — تأكد من الإنترنت وحاول مرة ثانية'); }
+  btn.disabled=false; btn.textContent=old;
+};
+function showDone(no){
+  var b=BRANCHES.find(function(x){return String(x.id)===branch.value});
+  $('#doneTxt').textContent='بيتواصل معك '+(b?'فرع '+b.name:'الفرع')+' على الواتساب بالأسعار في أقرب وقت.';
+  $('#doneNo').textContent='رقم الطلب: '+no;
+  $('#formView').classList.add('hidden'); $('#doneView').classList.remove('hidden'); $('#bar').classList.remove('on');
+  window.scrollTo({top:0});
+}
+$('#doneNew').onclick=function(){ state.sel={}; state.tab=CATALOG[0].id; $('#extra').value=''; update(); $('#doneView').classList.add('hidden'); $('#formView').classList.remove('hidden'); window.scrollTo({top:0}); };
+
+// عرض السعر PDF
+var libsP=null;
+function loadLibs(){
+  if(libsP) return libsP;
+  var add=function(src){return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s)})};
+  libsP=Promise.all([add('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),add('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')]);
+  return libsP;
+}
+function buildInvoice(){
+  var c=calc(),d=new Date(),v=new Date(d.getTime()+CONFIG.validDays*864e5);
+  var p2=function(n){return String(n).padStart(2,'0')};
+  var no='QR-'+String(d.getFullYear()).slice(2)+p2(d.getMonth()+1)+p2(d.getDate())+'-'+p2(d.getHours())+p2(d.getMinutes());
+  var ds=function(x){return x.getFullYear()+'/'+p2(x.getMonth()+1)+'/'+p2(x.getDate())};
+  var co=CONFIG.company, b=BRANCHES.find(function(x){return String(x.id)===branch.value});
+  var coLines=[b&&('الفرع: '+b.name),co.phone&&('الجوال: '+co.phone),co.cr&&('السجل التجاري: '+co.cr),co.vat&&('الرقم الضريبي: '+co.vat)].filter(Boolean).map(esc).join('<br>');
+  var rows=c.lines.map(function(l){return '<tr><td>'+esc(l.it.t)+(l.it.d?'<br><small>'+esc(l.it.d)+'</small>':'')+'</td><td class="q">'+l.q+'</td><td class="n">'+num(l.it.p)+'</td><td class="n">'+num(l.total)+'</td></tr>'}).join('');
+  var extra=$('#extra').value.trim();
+  $('#inv').innerHTML='<div class="redbar"></div>'
+   +'<div class="top"><div><img src="assets/logo.png" alt=""><div class="co">'+esc(co.name)+(coLines?'<br>'+coLines:'')+'</div></div>'
+   +'<div class="doc"><h1>عرض سعر</h1><div>رقم العرض: <b>'+no+'</b><br>التاريخ: '+ds(d)+'<br>صالح حتى: '+ds(v)+'</div></div></div>'
+   +'<div class="boxes"><div class="box"><h3>بيانات العميل</h3><p>'+($('#cname').value.trim()?'الاسم: <b>'+esc($('#cname').value.trim())+'</b><br>':'')+'الجوال: <b>'+esc($('#phone').value)+'</b></p></div>'
+   +'<div class="box"><h3>بيانات السيارة</h3><p><b>'+esc(make.value)+' '+esc(model.value)+'</b> · موديل '+esc(year.value)+(kmVal()?'<br>الممشى: <b>'+kmVal().toLocaleString('en-US')+' كم</b>':'')+($('#vin').value?'<br>الهيكل: <b dir="ltr">'+esc($('#vin').value)+'</b>':'')+'</p></div></div>'
+   +'<table><thead><tr><th>القطعة / الخدمة</th><th class="q">الكمية</th><th class="n">سعر الوحدة</th><th class="n">المجموع</th></tr></thead><tbody>'+rows+'</tbody></table>'
+   +(extra?'<div class="extra"><b>قطع إضافية للتسعير:</b> '+esc(extra)+'</div>':'')
+   +'<div class="tt"><div><span>المجموع قبل الضريبة</span><span>'+num(c.sub)+' ريال</span></div>'+(c.fee?'<div><span>رسوم الخدمة</span><span>'+num(c.fee)+' ريال</span></div>':'')
+   +'<div><span>ضريبة القيمة المضافة '+Math.round(CONFIG.vatRate*100)+'%</span><span>'+num(c.vat)+' ريال</span></div><div class="g"><span>الإجمالي</span><span>'+num(c.total)+' ريال</span></div></div>'
+   +'<div class="foot"><span>عرض سعر تقديري، ويؤكده الفرع قبل التنفيذ حسب توفّر القطع.</span><span>شكرًا لاختيارك القرعاوي</span></div>';
+  return no;
+}
+$('#pdfBtn').onclick=async function(){
+  if(!validate(false))return;
+  var btn=this;btn.disabled=true;var old=btn.textContent;btn.textContent='جاري التجهيز…';
+  try{
+    await loadLibs();
+    var no=buildInvoice();await document.fonts.ready;
+    var canvas=await html2canvas($('#inv'),{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    var pdf=new jspdf.jsPDF({unit:'pt',format:'a4'});var pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
+    var ih=canvas.height*pw/canvas.width,img=canvas.toDataURL('image/jpeg',0.95),y=0;
+    pdf.addImage(img,'JPEG',0,0,pw,ih);var left=ih-ph;while(left>4){y-=ph;pdf.addPage();pdf.addImage(img,'JPEG',0,y,pw,ih);left-=ph}
+    var u=URL.createObjectURL(pdf.output('blob')),a=document.createElement('a');a.href=u;a.download='عرض-سعر-القرعاوي-'+no+'.pdf';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);
+    toast('تم تحميل عرض السعر');
+  }catch(e){console.error(e);buildInvoice();window.print()}
+  finally{btn.textContent=old;btn.disabled=!calc().lines.length}
+};
+update();
+</script>
+</body>
+</html>
