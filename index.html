@@ -361,6 +361,21 @@
   #mode-supplies.active{background:#7a5cc9;border-color:#7a5cc9;color:#fff}
   #mode-catalog.active{background:#c0392b;border-color:#c0392b;color:#fff}
   /* ===== الكتالوج ===== */
+  .sup-picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;align-items:start}
+  .sup-pick{position:relative;background:var(--panel);border:1.5px solid var(--line);border-radius:12px;
+    padding:10px 8px 8px;text-align:center;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;
+    transition:border-color .15s,background .15s}
+  .sup-pick .sp-ic{font-size:22px;line-height:1;height:24px;display:flex;align-items:center;justify-content:center}
+  .sup-pick .sp-dot{width:16px;height:16px;border-radius:50%;display:inline-block}
+  .sup-pick .sp-nm{font-size:12.5px;font-weight:700;margin-top:6px;line-height:1.3}
+  .sup-pick.on{border-color:#7a5cc9;background:#f3effb}
+  .sup-pick.on::before{content:"✓";position:absolute;top:5px;right:7px;font-size:11px;font-weight:900;color:#7a5cc9}
+  .sp-qty{display:none;align-items:center;justify-content:center;gap:6px;margin-top:7px}
+  .sup-pick.on .sp-qty{display:flex}
+  .sp-qty button{width:28px;height:28px;border-radius:8px;border:none;background:#7a5cc9;color:#fff;font-size:17px;
+    font-weight:700;cursor:pointer;line-height:1}
+  .sp-qty b{min-width:22px;font-size:15px}
+  .sup-other-lbl{font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 6px}
   .cat-wrap{padding:14px 24px 0;max-width:1000px;margin-inline:auto}
   .cat-seg{display:flex;background:var(--soft);border-radius:12px;padding:4px;gap:4px;max-width:420px}
   .cat-seg button{flex:1;border:none;background:none;padding:9px;border-radius:9px;font-size:13.5px;
@@ -822,7 +837,9 @@
   <div class="sheet">
     <h2>طلب مستلزمات جديد</h2>
     <div class="add-items">
-      <label>المستلزمات المطلوبة</label>
+      <label>اضغط على المستلزمات المطلوبة</label>
+      <div id="sup-picks" class="sup-picks"></div>
+      <div class="sup-other-lbl">صنف غير موجود بالقائمة؟</div>
       <div id="sup-rows"></div>
       <button class="add-more" onclick="addSupRow()">+ إضافة صنف آخر</button>
     </div>
@@ -1849,10 +1866,28 @@ function startSupListener(){
     if(supRetries<8){ supRetries++; setTimeout(()=>{ if(firebase.auth().currentUser) startSupListener(); },1500); }
   });
 }
+const SUP_PRESETS=[
+  {name:"كيس كبير",ic:"🛍️"},{name:"كيس صغير",ic:"🛍️"},{name:"أوراق ثلاثة نسخ",ic:"📄"},
+  {name:"حبر الطابعة",ic:"🖨️"},{name:"شطرطون",ic:"📦"},
+  {name:"قلم أحمر",dot:"#d0342c"},{name:"قلم أزرق",dot:"#2f6fd6"},{name:"قلم أخضر",dot:"#2e9a52"},
+  {name:"قلم سبورة أسود",ic:"🖍️"},{name:"قماش التنظيف",ic:"🧽"},{name:"بخاخ التنظيف",ic:"🧴"}
+];
+let supSel={};
+function renderSupPicks(){
+  document.getElementById("sup-picks").innerHTML=SUP_PRESETS.map((p,i)=>{
+    const q=supSel[p.name]||0;
+    const ic=p.dot?`<span class="sp-dot" style="background:${p.dot}"></span>`:p.ic;
+    return `<div class="sup-pick${q?" on":""}" onclick="toggleSupPick(${i})"><div class="sp-ic">${ic}</div>`+
+      `<div class="sp-nm">${esc(p.name)}</div><div class="sp-qty" onclick="event.stopPropagation()">`+
+      `<button onclick="stepSupPick(${i},1)">+</button><b>${q}</b><button onclick="stepSupPick(${i},-1)">−</button></div></div>`;
+  }).join("");
+}
+function toggleSupPick(i){ const n=SUP_PRESETS[i].name; if(supSel[n]) delete supSel[n]; else supSel[n]=1; renderSupPicks(); }
+function stepSupPick(i,d){ const n=SUP_PRESETS[i].name, q=(supSel[n]||0)+d; if(q<=0) delete supSel[n]; else supSel[n]=Math.min(q,999); renderSupPicks(); }
 function openSupForm(){
   document.getElementById("sup-note").value="";
   document.getElementById("sup-rows").innerHTML="";
-  addSupRow();
+  supSel={}; renderSupPicks();
   document.getElementById("supOverlay").classList.add("show");
 }
 function closeSupForm(){ document.getElementById("supOverlay").classList.remove("show"); }
@@ -1868,7 +1903,8 @@ function addSupRow(name="",qty=1){
 }
 async function submitSupplies(){
   const rows=[...document.querySelectorAll("#sup-rows .irow")];
-  const items=rows.map(r=>({name:r.querySelector(".sup-name").value.trim(), qty:+r.querySelector(".sup-qty").value||1})).filter(x=>x.name);
+  const picked=SUP_PRESETS.filter(p=>supSel[p.name]).map(p=>({name:p.name, qty:supSel[p.name]}));
+  const items=picked.concat(rows.map(r=>({name:r.querySelector(".sup-name").value.trim(), qty:+r.querySelector(".sup-qty").value||1})).filter(x=>x.name));
   if(!items.length){ toast("أضف صنف واحد على الأقل"); return; }
   const now=Date.now(), id=newReqId();
   const sup={ id, branchId:me.id, items, note:document.getElementById("sup-note").value.trim(), status:"pending", createdAt:now, t:now };
