@@ -216,6 +216,10 @@
   #mgrLogin .logo{display:flex;align-items:center;gap:10px;margin-bottom:4px}
   #mgrLogin .logo .dot{width:11px;height:11px;border-radius:50%;background:var(--gold)}
   #mgrLogin h1{font-size:22px;font-weight:700}
+  .m-name{width:100%;background:var(--soft);border:1px solid var(--line);border-radius:11px;padding:12px 14px;
+    font-size:15px;font-family:inherit;color:var(--txt);outline:none;text-align:center;margin-bottom:16px}
+  .m-name:focus{border-color:var(--gold)}
+  .pad.locked{opacity:.35}
   #mgrLogin .sub{color:var(--muted);font-size:13px;margin-bottom:26px}
 
   /* لوحة المدير */
@@ -610,10 +614,11 @@
 <div id="mgrLogin" class="hidden">
   <img src="assets/logo.png" alt="القرعاوي" class="brand-logo">
   <div class="logo"><span class="dot"></span><h1 id="mgrLoginTitle">لوحة الإدارة</h1></div>
-  <div class="sub" id="mgrLoginSub">أدخل رمز الإدارة</div>
+  <div class="sub" id="mgrLoginSub">اكتب اسمك ثم رمز الإدارة</div>
   <div class="login-card">
+    <input id="mName" class="m-name" placeholder="اسمك (مطلوب)" maxlength="40" autocomplete="name" oninput="mNameChanged()">
     <div class="pin-display" id="mPinDots"></div>
-    <div class="pad">
+    <div class="pad locked" id="mPad">
       <button onclick="mPinPress('7')">7</button>
       <button onclick="mPinPress('8')">8</button>
       <button onclick="mPinPress('9')">9</button>
@@ -632,10 +637,23 @@
   <button class="mgr-link" onclick="closeMgrLogin()">→ رجوع لدخول الفروع</button>
 </div>
 
+<!-- اسم المستخدم للإدارة (للجلسات المحفوظة بدون اسم) -->
+<div class="overlay" id="adminNameOverlay">
+  <div class="sheet" style="max-width:380px">
+    <h2>مين معنا؟</h2>
+    <div class="field"><label>اكتب اسمك عشان يتسجّل باسمك كل اعتماد وتعديل</label>
+      <input id="adminNameInput" maxlength="40" placeholder="الاسم" onkeydown="if(event.key==='Enter')saveAdminName()"></div>
+    <div class="sheet-actions">
+      <button class="btn btn-cancel" onclick="mgrLogout()">خروج</button>
+      <button class="btn btn-send" onclick="saveAdminName()">متابعة</button>
+    </div>
+  </div>
+</div>
+
 <!-- الموقع -->
 <div class="wrap hidden" id="app">
   <div class="admin-bar hidden" id="adminBar">
-    <span>👑 أنت تتصفح كإدارة:</span>
+    <span>👑 <b id="adminBarWho"></b> — تتصفح كإدارة:</span>
     <select id="adminBranchSel" onchange="openAsBranch(this.value)"></select>
     <button onclick="backToAdmin()">↩ رجوع للوحة الإدارة</button>
   </div>
@@ -743,7 +761,7 @@
   <header>
     <div class="hd-top">
       <div class="brand"><span class="dot"></span>
-        <div><h1>لوحة الإدارة</h1><div class="bname">نظرة شاملة على كل الفروع</div></div>
+        <div><h1>لوحة الإدارة</h1><div class="bname">👤 <span id="mgrWho"></span></div></div>
       </div>
       <img src="assets/logo.png" alt="القرعاوي" class="hd-logo hd-logo-center">
       <div class="hd-actions">
@@ -1213,7 +1231,8 @@ auth.onAuthStateChanged(async user=>{
       const el=document.getElementById(id); if(el) el.classList.add("hidden");
     });
     const lg=document.getElementById("login"); if(lg) lg.classList.remove("hidden");
-    me=null; currentSubId=null; pinBuf=""; mPinBuf=""; IS_ADMIN=false;
+    me=null; currentSubId=null; pinBuf=""; mPinBuf=""; IS_ADMIN=false; setAdminName("");
+    document.getElementById("adminNameOverlay").classList.remove("show");
     listenerAttached=false; snapRetries=0; if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; }
     txAttached=false; txRetries=0; if(txUnsub){ try{txUnsub();}catch(e){} txUnsub=null; } TRANSFERS=[];
     supAttached=false; supRetries=0; if(supUnsub){ try{supUnsub();}catch(e){} supUnsub=null; } SUPPLIES=[];
@@ -1229,7 +1248,10 @@ auth.onAuthStateChanged(async user=>{
   const email=(user.email||"").toLowerCase();
   IS_ADMIN = email==="admin@qrawi.app";
   if(email==="admin@qrawi.app"){
-    startListener(); startTxListener(); startSupListener(); startCatListener(); startActListener(); enterMgr();
+    startListener(); startTxListener(); startSupListener(); startCatListener(); startActListener();
+    if(validName(ADMIN_NAME)) enterMgr();
+    else { ["login","mgrLogin"].forEach(id=>$("#"+id).classList.add("hidden"));
+      document.getElementById("adminNameInput").value=""; document.getElementById("adminNameOverlay").classList.add("show"); }
   }else if(email==="accountant@qrawi.app"){
     // حساب المحاسب أُلغي — الحوالات صارت من لوحة الإدارة
     toast("لوحة المحاسب أُلغيت — الحوالات صارت من لوحة الإدارة"); auth.signOut();
@@ -1249,6 +1271,16 @@ function saveData(){ /* no-op: الحفظ يتم لكل طلب على حدة */ 
 const $=s=>document.querySelector(s);
 let me=null, activeTab="all", pinBuf="";
 let IS_ADMIN=false;  // دخول الإدارة: صلاحيات كاملة (حذف + واجهة الفروع)
+// اسم الشخص اللي دخل الإدارة — إلزامي، ويُسجَّل مع كل اعتماد وتعديل وحذف
+let ADMIN_NAME=(()=>{ try{ return localStorage.getItem("adminName")||""; }catch(e){ return ""; } })();
+function validName(v){ v=String(v||"").trim(); return v.length>=2 && v.length<=40; }
+function setAdminName(v){ ADMIN_NAME=String(v||"").trim(); try{ ADMIN_NAME?localStorage.setItem("adminName",ADMIN_NAME):localStorage.removeItem("adminName"); }catch(e){} }
+function mNameChanged(){ document.getElementById("mPad").classList.toggle("locked",!validName(document.getElementById("mName").value)); }
+function saveAdminName(){
+  const v=document.getElementById("adminNameInput").value;
+  if(!validName(v)){ toast("اكتب اسمك (حرفين على الأقل)"); return; }
+  setAdminName(v); document.getElementById("adminNameOverlay").classList.remove("show"); enterMgr();
+}
 
 function branchName(id){const b=BRANCHES.find(x=>x.id===id);return b?b.name:"—";}
 function timeAgo(t){
@@ -1626,23 +1658,28 @@ let mPinBuf="", staffEmail="admin@qrawi.app";
 function openMgrLogin(){
   staffEmail="admin@qrawi.app";
   $("#mgrLoginTitle").textContent="لوحة الإدارة";
-  $("#mgrLoginSub").textContent="أدخل رمز الإدارة";
+  $("#mgrLoginSub").textContent="اكتب اسمك ثم رمز الإدارة";
   $("#login").classList.add("hidden");$("#mgrLogin").classList.remove("hidden");
   mPinBuf="";mRenderDots();$("#mLoginErr").textContent="";
+  const n=document.getElementById("mName"); n.value=""; mNameChanged(); setTimeout(()=>n.focus(),50);
 }
 function closeMgrLogin(){$("#mgrLogin").classList.add("hidden");$("#login").classList.remove("hidden");}
 function mRenderDots(){$("#mPinDots").innerHTML=[0,1,2,3,4,5].map(i=>
   `<div class="pin-dot ${i<mPinBuf.length?'filled':''}"></div>`).join("");}
-function mPinPress(d){if(mPinBuf.length>=6)return;mPinBuf+=d;mRenderDots();
+function mPinPress(d){
+  if(!validName(document.getElementById("mName").value)){ $("#mLoginErr").textContent="اكتب اسمك أول"; document.getElementById("mName").focus(); return; }
+  if(mPinBuf.length>=6)return;mPinBuf+=d;mRenderDots();
   $("#mLoginErr").textContent="";if(mPinBuf.length===6)mTryLogin();}
 function mPinBack(){mPinBuf=mPinBuf.slice(0,-1);mRenderDots();}
 function mPinClear(){mPinBuf="";mRenderDots();}
 async function mTryLogin(){
   $("#mLoginErr").textContent="جارٍ التحقق…";
+  setAdminName(document.getElementById("mName").value);   // قبل الدخول: onAuthStateChanged يحتاجه
   try{
     await auth.signInWithEmailAndPassword(staffEmail, mPinBuf);
     $("#mLoginErr").textContent="";  // onAuthStateChanged يفتح اللوحة المناسبة
   }catch(e){
+    setAdminName("");
     $("#mLoginErr").textContent = e.code==="auth/too-many-requests"
       ? "محاولات كثيرة، انتظر دقيقة" : "الرمز غير صحيح";
     mPinBuf=""; mRenderDots();
@@ -1654,6 +1691,7 @@ function enterMgr(){
   $("#app").classList.add("hidden");
   $("#fab").classList.add("hidden");
   $("#mgr").classList.remove("hidden");
+  $("#mgrWho").textContent=ADMIN_NAME; $("#adminBarWho").textContent=ADMIN_NAME;
   $("#adminBranchSel").innerHTML=BRANCHES.map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
   $("#flt-branch").innerHTML=`<option value="all">كل الفروع</option>`+
     BRANCHES.map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
@@ -2220,7 +2258,7 @@ async function submitSupplies(){
 }
 async function markSupplyDone(id){
   const s=SUPPLIES.find(x=>x.id===id); if(!s) return;
-  try{ await db.collection("supplies").doc(String(id)).set({...s,status:"done",doneAt:Date.now(),notifiedBranch:false});
+  try{ await db.collection("supplies").doc(String(id)).set({...s,status:"done",doneAt:Date.now(),notifiedBranch:false,doneBy:ADMIN_NAME});
     logActivity("توفير طلب مستلزمات", `${branchName(s.branchId)} · ${(s.items||[]).length} صنف`); }
   catch(e){ console.error(e); toast("تعذّر التحديث"); }
 }
@@ -2234,7 +2272,8 @@ function supCardHTML(s, forMgr){
   const chips=(s.items||[]).map(i=>`<span class="sup-chip">${esc(i.name)} ×${i.qty}</span>`).join("");
   const badge = s.status==="done" ? `<span class="tx-status tx-confirmed">تم التوفير ✓</span>` : `<span class="tx-status tx-pending">قيد المعالجة</span>`;
   const branchLine = forMgr ? `<div class="sup-branch">${branchName(s.branchId)}</div>` : "";
-  const note = s.note ? `<div class="sup-note">📝 ${esc(s.note)}</div>` : "";
+  const note = (s.note ? `<div class="sup-note">📝 ${esc(s.note)}</div>` : "")
+    + (forMgr && s.doneBy ? `<div class="sup-note">✓ وفّرها: ${esc(s.doneBy)}</div>` : "");
   const foot = (forMgr && s.status!=="done") ? `<div class="sup-foot"><button class="sup-done-btn" onclick="markSupplyDone(${s.id})">✓ تم التوفير</button></div>` : "";
   const del = ((!forMgr && s.status!=="done") || IS_ADMIN) ? `<button class="tx-del" onclick="deleteSupply(${s.id})" title="حذف">🗑</button>` : "";
   return `<div class="sup-card ${s.status==='done'?'':'pending'}">
@@ -2397,7 +2436,7 @@ async function deleteTransfer(id){
 }
 async function setTransferStatus(id,status,reason){
   const t=TRANSFERS.find(x=>x.id===id); if(!t)return;
-  const upd={...t,status,decidedAt:Date.now(),notifiedBranch:false};
+  const upd={...t,status,decidedAt:Date.now(),notifiedBranch:false,decidedBy:ADMIN_NAME};
   if(reason!==undefined) upd.rejectReason=reason;
   try{ await db.collection("transfers").doc(String(id)).set(upd);
     logActivity(status==="confirmed"?"تأكيد حوالة":"رفض حوالة", `${branchName(t.branchId)} · ${fmtAmount(t.amount)} ريال${reason?" · السبب: "+reason:""}`); }
@@ -2451,6 +2490,7 @@ function txCardHTML(t,forAcc){
   if(t.invoiceNo) rows.push(`<div class="row"><span class="k">رقم الفاتورة</span><span>${esc(t.invoiceNo)}</span></div>`);
   if(t.senderName) rows.push(`<div class="row"><span class="k">المحوِّل</span><span>${esc(t.senderName)}</span></div>`);
   rows.push(`<div class="row"><span class="k">التاريخ</span><span>${timeAgo(t.t)}</span></div>`);
+  if(t.decidedBy && t.status!=="pending") rows.push(`<div class="row"><span class="k">${t.status==="confirmed"?"أكّدها":"رفضها"}</span><span>${esc(t.decidedBy)}</span></div>`);
   const noteHtml=t.note?`<div class="tx-note">📝 ${esc(t.note)}</div>`:"";
   const rejHtml=(t.status==="rejected"&&t.rejectReason)?`<div class="tx-reject-reason">سبب الرفض: ${esc(t.rejectReason)}</div>`:"";
   const receiptBtn=t.hasReceipt?`<button class="tx-receipt-btn" onclick="viewReceipt(${t.id})">📄 عرض إيصال التحويل</button>`:"";
@@ -2495,7 +2535,7 @@ function rejectTransfer(id){ const r=prompt("سبب الرفض (اختياري):
 function exportTransfersExcel(){
   const statusAr={pending:"بانتظار التأكيد",confirmed:"مؤكدة",rejected:"مرفوضة"};
   const list=filterTx(mgrTxTab);
-  const rows=[["رقم الحوالة","التاريخ","الفرع","المبلغ","البنك","رقم العملية","رقم الفاتورة","المحوِّل","الحالة","وقت التأكيد/الرفض","سبب الرفض","ملاحظة"]];
+  const rows=[["رقم الحوالة","التاريخ","الفرع","المبلغ","البنك","رقم العملية","رقم الفاتورة","المحوِّل","الحالة","وقت التأكيد/الرفض","بواسطة","سبب الرفض","ملاحظة"]];
   list.forEach(t=>{
     rows.push([
       csvText(t.id),
@@ -2508,6 +2548,7 @@ function exportTransfersExcel(){
       t.senderName||"",
       statusAr[t.status]||t.status,
       t.decidedAt?new Date(t.decidedAt).toLocaleString("ar-SA"):"",
+      t.decidedBy||"",
       t.rejectReason||"",
       t.note||""
     ]);
@@ -2591,7 +2632,7 @@ async function submitCatAdd(){
   }
   const now=Date.now(), id=newReqId();
   Object.assign(doc,{id, branchId:me.id, status:IS_ADMIN?"approved":"pending", t:now, createdAt:now});
-  if(IS_ADMIN) doc.decidedAt=now;
+  if(IS_ADMIN){ doc.decidedAt=now; doc.decidedBy=ADMIN_NAME; }
   const btn=document.getElementById("caSubmit"); btn.disabled=true; btn.textContent="جارٍ الإرسال…";
   if(IS_ADMIN) doc.notified=true; else doc.notified=false;
   try{ await db.collection("catalog_adds").doc(String(id)).set(doc); closeCatAdd();
@@ -2619,7 +2660,7 @@ function catAddCardHTML(a){
         <div style="font-size:13.5px;font-weight:700">${title}</div>
         <div class="ca-code">${esc(a.code)}</div><div style="font-size:11.5px;color:var(--muted)">${meta}</div></div>
       <span class="tx-status ${st[0]}">${st[1]}</span>
-    </div>${a.rejectReason?`<div class="sup-note">سبب الرفض: ${esc(a.rejectReason)}</div>`:""}${foot}
+    </div>${a.rejectReason?`<div class="sup-note">سبب الرفض: ${esc(a.rejectReason)}</div>`:""}${a.decidedBy?`<div class="sup-note">${a.status==="approved"?"اعتمدها":"رفضها"}: ${esc(a.decidedBy)}</div>`:""}${foot}
   </div>`;
 }
 function renderMgrCatalog(){
@@ -2637,7 +2678,7 @@ async function decideCatAdd(id,status){
   let reason="";
   if(status==="rejected"){ const r=prompt("سبب الرفض (اختياري):",""); if(r===null) return; reason=r.trim(); }
   const ad=CAT_ADDS.find(x=>x.id===id);
-  try{ await db.collection("catalog_adds").doc(String(id)).update({status, decidedAt:Date.now(), rejectReason:reason, notifiedBranch:false});
+  try{ await db.collection("catalog_adds").doc(String(id)).update({status, decidedAt:Date.now(), rejectReason:reason, notifiedBranch:false, decidedBy:ADMIN_NAME});
     if(ad) logActivity(status==="approved"?"اعتماد إضافة كتالوج":"رفض إضافة كتالوج", catAddLabel(ad)+(reason?" · السبب: "+reason:""));
     toast(status==="approved"?"تم الاعتماد — ظهرت في الكتالوج":"تم الرفض"); }
   catch(e){ console.error(e); toast("تعذّر الحفظ"); }
@@ -2655,7 +2696,8 @@ let ACTIVITY=[], actAttached=false, actUnsub=null;
 function catAddLabel(a){ return a.kind==="car" ? `${a.car} · ${a.code}` : `${a.cat||""} · ${a.name||""} ${a.code||""}`; }
 function activityActor(){
   const inBranch=me && !document.getElementById("app").classList.contains("hidden");
-  if(IS_ADMIN) return inBranch ? `الإدارة (من واجهة ${me.name})` : "الإدارة";
+  const who="الإدارة — "+(ADMIN_NAME||"بدون اسم");
+  if(IS_ADMIN) return inBranch ? `${who} (من واجهة ${me.name})` : who;
   return me ? me.name : "—";
 }
 function logActivity(action,target){
