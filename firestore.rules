@@ -1,0 +1,56 @@
+// قواعد Firestore المقترحة — تُلصق في Firebase Console ← Firestore ← Rules
+// شرطها: إضافة FIREBASE_SERVICE_ACCOUNT في أسرار GitHub أولاً (سكربت الإشعارات يتجاوز القواعد بحساب الخدمة)،
+// ثم إيقاف تسجيل الدخول المجهول (Anonymous) من Authentication.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function email() { return request.auth != null && request.auth.token.email is string ? request.auth.token.email : ''; }
+    function isAdmin() { return email() == 'admin@qrawi.app'; }
+    function isBranchUser() { return email().matches('^b[0-9]+@qrawi[.]app$'); }
+    function isStaff() { return isAdmin() || isBranchUser(); }
+    function isBranch(id) { return email() == 'b' + string(id) + '@qrawi.app'; }
+
+    // طلبات القطع: الفروع ترد على الطلبات الموجّهة لها، فالتحديث لكل الموظفين
+    match /requests/{id} {
+      allow read: if isStaff();
+      allow create: if isAdmin() || isBranch(request.resource.data.from);
+      allow update: if isStaff();
+      allow delete: if isAdmin() || isBranch(resource.data.from);
+    }
+    // الحوالات: الفرع يرفع، الإدارة فقط تؤكد/ترفض
+    match /transfers/{id} {
+      allow read: if isStaff();
+      allow create: if isAdmin() || isBranch(request.resource.data.branchId);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isBranch(resource.data.branchId) && resource.data.status == 'pending');
+    }
+    match /transfer_images/{id} {
+      allow read, create, delete: if isStaff();
+    }
+    // المستلزمات: الفرع يطلب، الإدارة توفّر
+    match /supplies/{id} {
+      allow read: if isStaff();
+      allow create: if isAdmin() || isBranch(request.resource.data.branchId);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isBranch(resource.data.branchId) && resource.data.status != 'done');
+    }
+    match /arrivals/{id} {
+      allow read, create: if isStaff();
+    }
+    // اشتراكات الإشعارات: كتابة فقط (القراءة لسكربت الإشعارات عبر حساب الخدمة)
+    match /subs/{id} {
+      allow create, update: if isStaff();
+    }
+    // إضافات الكتالوج: الفرع يقترح (pending)، الإدارة تعتمد/تحذف
+    match /catalog_adds/{id} {
+      allow read: if isStaff();
+      allow create: if isAdmin() || (isBranch(request.resource.data.branchId) && request.resource.data.status == 'pending');
+      allow update, delete: if isAdmin();
+    }
+    // سجل النشاط: يُكتب ولا يُعدّل، والإدارة فقط تقرأه
+    match /activity/{id} {
+      allow create: if isStaff();
+      allow read: if isAdmin();
+    }
+  }
+}

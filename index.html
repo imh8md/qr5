@@ -225,6 +225,16 @@
   .mgr-body .kpi-panel{grid-column:1/-1}
   .mgr-body .span-all{grid-column:1/-1}
   .mgr-body>*{min-width:0}
+  .act-list{display:flex;flex-direction:column;gap:7px}
+  .act-row{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:11px;padding:9px 12px}
+  .act-ic{width:26px;height:26px;flex:none;border-radius:50%;background:var(--soft);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+  .act-ic.pos{background:var(--green-bg);color:var(--green)} .act-ic.neg{background:var(--red-bg);color:var(--red)}
+  .act-body{font-size:13px;min-width:0;overflow-wrap:anywhere}
+  .act-meta{font-size:11px;color:var(--muted);margin-top:2px}
+  .act-filter{background:var(--soft);border:1px solid var(--line);border-radius:9px;padding:7px 9px;font-family:inherit;font-size:12.5px}
+  .arch-note{font-size:12px;color:var(--muted);background:var(--soft);border-radius:9px;padding:7px 11px;margin:4px 0 10px;
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .arch-note button{background:var(--txt);color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer}
   .mgr-stats{grid-template-columns:repeat(5,1fr)}
   .mgr-nav{position:sticky;top:0;z-index:20;display:flex;gap:6px;padding:10px 24px;background:var(--bg);
     border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
@@ -256,8 +266,8 @@
     .mgr-stats{grid-template-columns:repeat(6,1fr)}
     .mgr-stats .stat:nth-child(-n+3){grid-column:span 2}
     .mgr-stats .stat:nth-child(n+4){grid-column:span 3}
-    .mgr-nav{display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
-    .mgr-nav button{padding:7px 2px;font-size:11.5px;white-space:normal;line-height:1.35}
+    .mgr-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+    .mgr-nav button{padding:7px 4px;font-size:12px;white-space:nowrap}
     .nav-badge{min-width:16px;padding:0 4px;font-size:10px;line-height:16px}
     .mgr-body .kpi-grid{grid-template-columns:repeat(2,1fr)}
     .mgr-body .kpi:nth-child(2){border-inline-end:none}
@@ -758,6 +768,7 @@
     <button data-pane="supplies" onclick="setMgrPane('supplies')">🧰 المستلزمات <span class="nav-badge" id="navSupBadge"></span></button>
     <button data-pane="catalog" onclick="setMgrPane('catalog')">📘 الكتالوج <span class="nav-badge" id="navCatBadge"></span></button>
     <button data-pane="log" onclick="setMgrPane('log')">📋 سجل الطلبات</button>
+    <button data-pane="activity" onclick="setMgrPane('activity')">🕓 النشاط</button>
   </nav>
 
   <!-- نظرة عامة -->
@@ -820,6 +831,7 @@
         <button class="export-btn" onclick="exportTransfersExcel()">⬇ تصدير Excel</button>
       </div>
       <div class="perf-sub">حوالات الفروع — أكّدها أو ارفضها بعد التحقق من الحساب البنكي</div>
+      <div class="arch-note"></div>
       <div class="tabs" id="mgrTxTabs" style="padding:0 0 4px"></div>
       <div id="mgrTxList" class="list" style="padding:8px 0 0;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))"></div>
     </section>
@@ -844,6 +856,20 @@
     </section>
   </div>
 
+  <!-- سجل النشاط -->
+  <div class="mgr-body mgr-pane hidden" id="pane-activity">
+    <section class="panel span-all">
+      <div class="log-header">
+        <h3>سجل النشاط</h3>
+        <select id="actFilter" class="act-filter" onchange="renderActivity()">
+          <option value="all">الكل</option><option value="admin">الإدارة فقط</option><option value="branch">الفروع فقط</option>
+        </select>
+      </div>
+      <div class="perf-sub">كل اعتماد ورفض وحذف — مين سوّاه ومتى (آخر 60 يوم)</div>
+      <div id="actList" class="act-list"></div>
+    </section>
+  </div>
+
   <!-- سجل الطلبات -->
   <div class="mgr-body mgr-pane hidden" id="pane-log">
     <section class="panel span-all">
@@ -854,6 +880,7 @@
           <button class="export-btn" style="background:var(--red)" onclick="clearAllData()">🗑 مسح الكل</button>
         </div>
       </div>
+      <div class="arch-note"></div>
       <div class="filters">
         <select id="flt-status" onchange="renderMgr()">
           <option value="all">كل الحالات</option>
@@ -1157,7 +1184,7 @@ function startListener(){
   const cutoff = Date.now() - READ_WINDOW_DAYS*86400000;
   unsubSnap = db.collection("requests").where("t",">=",cutoff).onSnapshot(snap=>{
     snapRetries=0;  // نجح — صفّر عدّاد إعادة المحاولة
-    REQS = snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
+    REQS = snap.docs.map(d=>cleanReq(d.data())).sort((a,b)=>b.t-a.t);
     firestoreReady = true;
     const source = snap.metadata.fromCache ? "cache" : "server";
     if(navigator.onLine && source==="server") setConn("online","متصل مباشرة");
@@ -1190,6 +1217,8 @@ auth.onAuthStateChanged(async user=>{
     listenerAttached=false; snapRetries=0; if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; }
     txAttached=false; txRetries=0; if(txUnsub){ try{txUnsub();}catch(e){} txUnsub=null; } TRANSFERS=[];
     supAttached=false; supRetries=0; if(supUnsub){ try{supUnsub();}catch(e){} supUnsub=null; } SUPPLIES=[];
+    ARCH_REQS=[]; ARCH_TX=[]; archLoaded=false;
+    actAttached=false; if(actUnsub){ try{actUnsub();}catch(e){} actUnsub=null; } ACTIVITY=[];
     catAttached=false; catRetries=0; if(catUnsub){ try{catUnsub();}catch(e){} catUnsub=null; } CAT_ADDS=[]; catCache=null;
     if(typeof renderPinDots==="function") renderPinDots();
     if(typeof mRenderDots==="function") mRenderDots();
@@ -1200,7 +1229,7 @@ auth.onAuthStateChanged(async user=>{
   const email=(user.email||"").toLowerCase();
   IS_ADMIN = email==="admin@qrawi.app";
   if(email==="admin@qrawi.app"){
-    startListener(); startTxListener(); startSupListener(); startCatListener(); enterMgr();
+    startListener(); startTxListener(); startSupListener(); startCatListener(); startActListener(); enterMgr();
   }else if(email==="accountant@qrawi.app"){
     // حساب المحاسب أُلغي — الحوالات صارت من لوحة الإدارة
     toast("لوحة المحاسب أُلغيت — الحوالات صارت من لوحة الإدارة"); auth.signOut();
@@ -1372,8 +1401,8 @@ function cardHTML(req){
     }else right=`<span class="pill ${p.c}">${p.t}</span>`;
     return `<div class="item">
       <div class="item-main">
-        <div class="item-part">${it.part}</div>
-        ${it.name?`<div class="item-name">${it.name}</div>`:''}
+        <div class="item-part">${esc(it.part)}</div>
+        ${it.name?`<div class="item-name">${esc(it.name)}</div>`:''}
       </div>
       <span class="item-qty">×${it.qty}</span>
       <div class="item-status">${right}</div>
@@ -1399,7 +1428,7 @@ function cardHTML(req){
     </div>`;
   }
 
-  const noteHTML=req.note?`<div class="card-note">📝 ${req.note}</div>`:"";
+  const noteHTML=req.note?`<div class="card-note">📝 ${esc(req.note)}</div>`:"";
   // أيقونة حذف بالزاوية: لصاحب الطلب فقط، على أي حالة
   const delBtn=(iAmAsker||IS_ADMIN)
     ? `<button class="card-del" title="حذف الطلب" onclick="deleteReq(${req.id})">🗑</button>` : "";
@@ -1426,8 +1455,59 @@ function cardHTML(req){
 
 /* إجراءات */
 // معرف فريد للقطع (وقت + عشوائي، آمن بين الفروع)
+// تنظيف البيانات القادمة من السحابة: المعرّفات والأرقام تدخل في onclick، فلازم تكون أرقام فعلاً
+// CSV آمن لـ Excel: المعرّفات كنص (16 رقم)، ومنع تنفيذ النصوص اللي تبدأ بـ = + - @ كمعادلات
+function csvText(v){ return {__text:String(v)}; }
+function csvCell(c){
+  if(c && c.__text!==undefined) return `"=""${c.__text}"""`;
+  let s=String(c??"");
+  if(typeof c==="string" && /^[=+\-@\t\r]/.test(s)) s="'"+s;
+  s=s.replace(/"/g,'""');
+  return /[",\n\r]/.test(s)?`"${s}"`:s;
+}
+function toCSV(rows){ return rows.map(r=>r.map(csvCell).join(",")).join("\r\n"); }
+/* الأرشيف: الاستماع المباشر يغطي آخر READ_WINDOW_DAYS يوم فقط؛ الإدارة تقدر تحمّل الأقدم مرة وحدة */
+let ARCH_REQS=[], ARCH_TX=[], archLoaded=false, archLoading=false;
+function mergeById(live,old){ if(!archLoaded) return live; const ids=new Set(live.map(x=>x.id)); return live.concat(old.filter(x=>!ids.has(x.id))); }
+function mgrReqs(){ return mergeById(REQS,ARCH_REQS); }
+function mgrTx(){ return mergeById(TRANSFERS,ARCH_TX); }
+function renderArchNotes(){
+  const html = archLoaded
+    ? `📦 يشمل الأرشيف الكامل (${ARCH_REQS.length} طلب و ${ARCH_TX.length} حوالة أقدم من ${READ_WINDOW_DAYS} يوم)`
+    : `📅 المعروض آخر ${READ_WINDOW_DAYS} يوم فقط — <button onclick="loadArchive()" ${archLoading?"disabled":""}>${archLoading?"جارٍ التحميل…":"تحميل الأرشيف الكامل"}</button>`;
+  document.querySelectorAll(".arch-note").forEach(el=>el.innerHTML=html);
+}
+async function loadArchive(){
+  if(archLoaded||archLoading) return; archLoading=true; renderArchNotes();
+  const cutoff=Date.now()-READ_WINDOW_DAYS*86400000;
+  try{
+    const [a,b]=await Promise.all([
+      db.collection("requests").where("t","<",cutoff).get(),
+      db.collection("transfers").where("t","<",cutoff).get()]);
+    ARCH_REQS=a.docs.map(d=>cleanReq(d.data())); ARCH_TX=b.docs.map(d=>cleanNums(d.data())); archLoaded=true;
+    renderMgr(); renderMgrTransfers(); toast("تم تحميل الأرشيف");
+  }catch(e){ console.error(e); toast("تعذّر تحميل الأرشيف"); }
+  archLoading=false; renderArchNotes();
+}
+function num(v){ v=Number(v); return Number.isFinite(v)?v:0; }
+function cleanNums(o){
+  o={...o}; ["id","branchId","from","to","t","amount","createdAt","decidedAt","doneAt"].forEach(k=>{ if(k in o) o[k]=num(o[k]); });
+  return o;
+}
+function cleanReq(r){
+  r=cleanNums(r);
+  r.note=r.note==null?"":String(r.note);
+  r.items=(Array.isArray(r.items)?r.items:[]).map(i=>({...i,id:num(i.id),qty:num(i.qty)||1,
+    part:String(i.part??""),name:i.name==null?"":String(i.name)}));
+  return r;
+}
+function cleanSup(x){
+  x=cleanNums(x);
+  x.items=(Array.isArray(x.items)?x.items:[]).map(i=>({...i,name:String(i.name??""),qty:num(i.qty)||1}));
+  return x;
+}
 function newItemId(){ return Date.now()*1000 + Math.floor(Math.random()*1000); }
-function newReqId(){ return Date.now(); }
+function newReqId(){ return Date.now()*1000 + Math.floor(Math.random()*1000); }  // يمنع تصادم طلبين بنفس اللحظة
 
 function setItem(reqId,itemId,status){
   const r=REQS.find(x=>x.id===reqId);
@@ -1478,10 +1558,10 @@ function addRow(part="",qty=1,name=""){
   const div=document.createElement("div");
   div.className="irow";
   div.innerHTML=`
-    <input class="p" placeholder="رقم القطعة" autocomplete="off" value="${part.replace(/"/g,'&quot;')}">
-    <input class="q" type="number" value="${qty}" min="1">
+    <input class="p" placeholder="رقم القطعة" autocomplete="off" value="${esc(part)}">
+    <input class="q" type="number" value="${num(qty)||1}" min="1">
     <button class="del" onclick="this.parentElement.remove()">×</button>
-    <input class="nm" placeholder="اسم القطعة (اختياري)" autocomplete="off" value="${(name||'').replace(/"/g,'&quot;')}">`;
+    <input class="nm" placeholder="اسم القطعة (اختياري)" autocomplete="off" value="${esc(name||'')}">`;
   $("#irows").appendChild(div);
   if(!part)div.querySelector(".p").focus();
 }
@@ -1523,6 +1603,7 @@ function deleteReq(reqId){
   if(!r)return;
   if(!confirm("هل تريد حذف هذا الطلب نهائياً؟ لا يمكن التراجع."))return;
   deleteReqFromCloud(reqId);
+  logActivity("حذف طلب قطع", `${branchName(r.from)} ← ${branchName(r.to)} · ${r.items.map(i=>i.part).join("، ")}`);
   toast("تم حذف الطلب");
 }
 // مسح جميع البيانات (زر في لوحة المدير)
@@ -1531,6 +1612,7 @@ async function clearAllData(){
   if(!confirm("تأكيد نهائي: لا يمكن التراجع عن هذه العملية."))return;
   try{
     await clearAllFromCloud();
+    logActivity("مسح كل طلبات القطع","");
     toast("تم مسح جميع الطلبات");
   }catch(e){
     console.error(e);
@@ -1579,6 +1661,7 @@ function enterMgr(){
   renderMgrTransfers();
   renderMgrSupplies();
   renderMgrCatalog();
+  renderArchNotes();
   let pane="overview"; try{ pane=localStorage.getItem("mgrPane")||"overview"; }catch(e){}
   setMgrPane(pane);
   // الإدارة تستقبل إشعارات الحوالات (كانت للمحاسب سابقاً)
@@ -1586,7 +1669,7 @@ function enterMgr(){
 }
 function mgrLogout(){ auth.signOut(); }  // onAuthStateChanged يعيد شاشة الدخول
 
-const MGR_PANES=["overview","transfers","supplies","catalog","log"];
+const MGR_PANES=["overview","transfers","supplies","catalog","log","activity"];
 function setMgrPane(k){
   if(!MGR_PANES.includes(k)) k="overview";
   MGR_PANES.forEach(p=>document.getElementById("pane-"+p).classList.toggle("hidden",p!==k));
@@ -1637,6 +1720,7 @@ function fmtDur(ms){
 }
 
 function renderMgr(){
+  const REQS=mgrReqs();   // يشمل الأرشيف إذا حمّلته الإدارة
   const allItems=REQS.flatMap(r=>r.items.map(i=>({...i,to:r.to,from:r.from,reqT:r.t})));
   // أرقام عامة
   $("#m-open").textContent=REQS.filter(r=>reqState(r)!=="done").length;
@@ -1725,7 +1809,7 @@ function renderMgr(){
     const late=isLateReq(r);
     const chips=r.items.map(it=>{
       const c=it.status==="ready"?"ready":it.status==="unavailable"?"no":it.status==="wh2"?"wh2":it.status==="done"?"done":"";
-      return `<span class="log-chip ${c}">${it.part} ×${it.qty}</span>`;
+      return `<span class="log-chip ${c}">${esc(it.part)} ×${it.qty}</span>`;
     }).join("");
     return `<div class="log-row ${late?'late':''}">
       <div class="log-head">
@@ -1735,7 +1819,7 @@ function renderMgr(){
           <button class="log-del" title="حذف الطلب" onclick="deleteReq(${r.id})">🗑</button></span>
       </div>
       <div class="log-items">${chips}</div>
-      ${r.note?`<div class="log-note">📝 ${r.note}</div>`:''}
+      ${r.note?`<div class="log-note">📝 ${esc(r.note)}</div>`:''}
     </div>`;
   }).join(""):`<div class="perf-na">لا توجد طلبات مطابقة</div>`;
 }
@@ -1749,6 +1833,7 @@ function isLateReq(r){
 
 // تصدير السجل (حسب الفلاتر الحالية) كملف Excel/CSV عربي
 function exportExcel(){
+  const REQS=mgrReqs();
   const fS=$("#flt-status").value, fB=$("#flt-branch").value, fD=$("#flt-date").value;
   let log=[...REQS].sort((a,b)=>b.t-a.t);
   if(fS==="open")log=log.filter(r=>reqState(r)!=="done");
@@ -1762,13 +1847,10 @@ function exportExcel(){
   log.forEach(r=>{
     const d=new Date(r.t).toLocaleString("ar-SA");
     r.items.forEach(it=>{
-      rows.push([r.id,d,branchName(r.from),branchName(r.to),it.part,it.name||"",it.qty,statusAr[it.status]||it.status,r.note||""]);
+      rows.push([csvText(r.id),d,branchName(r.from),branchName(r.to),it.part,it.name||"",it.qty,statusAr[it.status]||it.status,r.note||""]);
     });
   });
-  const csv=rows.map(row=>row.map(c=>{
-    const s=String(c).replace(/"/g,'""');
-    return /[",\n]/.test(s)?`"${s}"`:s;
-  }).join(",")).join("\r\n");
+  const csv=toCSV(rows);
   // BOM لضمان قراءة Excel للعربية
   const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
@@ -1786,14 +1868,14 @@ function renderBars(sel,data,limit,ltr){
   const max=top.length?top[0][1]:1;
   $(sel).innerHTML=top.length?top.map(([label,n])=>`
     <div class="bar-row">
-      <span class="bar-label"${ltr?'':' style="direction:rtl;font-family:inherit"'}>${label}</span>
+      <span class="bar-label"${ltr?'':' style="direction:rtl;font-family:inherit"'}>${esc(label)}</span>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/max*100)}%"></div></div>
       <span class="bar-val">${n}</span>
     </div>`).join(""):`<div class="perf-na">لا توجد بيانات</div>`;
 }
 
 /* ===================== التنبيه والصوت ===================== */
-let soundOn = localStorage.getItem("soundOn")!=="0";
+let soundOn = (()=>{ try{ return localStorage.getItem("soundOn")!=="0"; }catch(e){ return true; } })();
 let lastDirectedIds = new Set();   // الطلبات الموجّهة لفرعي التي رأيتها
 let audioCtx=null;
 
@@ -1805,7 +1887,7 @@ function refreshSoundBtn(){
 }
 function toggleSound(){
   soundOn=!soundOn;
-  localStorage.setItem("soundOn",soundOn?"1":"0");
+  try{ localStorage.setItem("soundOn",soundOn?"1":"0"); }catch(e){}
   refreshSoundBtn();
   if(soundOn)playChime();   // تأكيد مسموع + يفتح إذن الصوت في المتصفح
 }
@@ -1913,7 +1995,7 @@ function startTxListener(){
   const cutoff=Date.now()-READ_WINDOW_DAYS*86400000;
   txUnsub=db.collection("transfers").where("t",">=",cutoff).onSnapshot(snap=>{
     txRetries=0;
-    TRANSFERS=snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
+    TRANSFERS=snap.docs.map(d=>cleanNums(d.data())).sort((a,b)=>b.t-a.t);
     const mgr=document.getElementById("mgr");
     if(mgr && !mgr.classList.contains("hidden")) renderMgrTransfers();
     const app=document.getElementById("app");
@@ -1997,6 +2079,7 @@ async function adminDelCatItem(kind,ref){
     if(addId) await db.collection("catalog_adds").doc(String(addId)).delete();
     else { const id=newReqId(); await db.collection("catalog_adds").doc(String(id)).set({id,kind:"hide",key,label,branchId:me?me.id:0,status:"hidden",t:Date.now()}); }
     toast("تم الحذف من الكتالوج");
+    logActivity("حذف رمز من الكتالوج", label);
   }catch(e){ console.error(e); toast("تعذّر الحذف"); }
 }
 function catCarRows(){ const C=catData(), out=[]; for(const car in C.cars) for(const g in C.cars[car]) C.cars[car][g].forEach(r=>out.push({car,group:g,...r})); return out; }
@@ -2079,7 +2162,7 @@ function startSupListener(){
   const cutoff=Date.now()-READ_WINDOW_DAYS*86400000;
   supUnsub=db.collection("supplies").where("t",">=",cutoff).onSnapshot(snap=>{
     supRetries=0;
-    SUPPLIES=snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t);
+    SUPPLIES=snap.docs.map(d=>cleanSup(d.data())).sort((a,b)=>b.t-a.t);
     const appEl=document.getElementById("app"), mgrEl=document.getElementById("mgr");
     if(appEl && !appEl.classList.contains("hidden") && branchMode==="supplies") renderBranchSupplies();
     if(mgrEl && !mgrEl.classList.contains("hidden")) renderMgrSupplies();
@@ -2129,7 +2212,7 @@ async function submitSupplies(){
   const items=picked.concat(rows.map(r=>({name:r.querySelector(".sup-name").value.trim(), qty:+r.querySelector(".sup-qty").value||1})).filter(x=>x.name));
   if(!items.length){ toast("أضف صنف واحد على الأقل"); return; }
   const now=Date.now(), id=newReqId();
-  const sup={ id, branchId:me.id, items, note:document.getElementById("sup-note").value.trim(), status:"pending", createdAt:now, t:now };
+  const sup={ id, branchId:me.id, items, note:document.getElementById("sup-note").value.trim(), status:"pending", createdAt:now, t:now, notified:false };
   const btn=document.getElementById("supSubmit"); btn.disabled=true; btn.textContent="جارٍ الرفع…";
   try{ await db.collection("supplies").doc(String(id)).set(sup); closeSupForm(); toast("تم رفع طلب المستلزمات"); }
   catch(e){ console.error(e); toast("تعذّر الرفع"); }
@@ -2137,12 +2220,15 @@ async function submitSupplies(){
 }
 async function markSupplyDone(id){
   const s=SUPPLIES.find(x=>x.id===id); if(!s) return;
-  try{ await db.collection("supplies").doc(String(id)).set({...s,status:"done",doneAt:Date.now()}); }
+  try{ await db.collection("supplies").doc(String(id)).set({...s,status:"done",doneAt:Date.now(),notifiedBranch:false});
+    logActivity("توفير طلب مستلزمات", `${branchName(s.branchId)} · ${(s.items||[]).length} صنف`); }
   catch(e){ console.error(e); toast("تعذّر التحديث"); }
 }
 function deleteSupply(id){
   if(!confirm("حذف طلب المستلزمات؟")) return;
-  db.collection("supplies").doc(String(id)).delete().then(()=>toast("تم الحذف")).catch(e=>{console.error(e);toast("تعذّر الحذف");});
+  const sp=SUPPLIES.find(x=>x.id===id);
+  db.collection("supplies").doc(String(id)).delete().then(()=>{ toast("تم الحذف");
+    logActivity("حذف طلب مستلزمات", sp?`${branchName(sp.branchId)} · ${(sp.items||[]).map(i=>i.name+" ×"+i.qty).join("، ")}`:""); }).catch(e=>{console.error(e);toast("تعذّر الحذف");});
 }
 function supCardHTML(s, forMgr){
   const chips=(s.items||[]).map(i=>`<span class="sup-chip">${esc(i.name)} ×${i.qty}</span>`).join("");
@@ -2302,16 +2388,19 @@ async function loadTransferImage(id){ const d=await db.collection("transfer_imag
 async function deleteTransfer(id){
   if(!confirm("حذف هذه الحوالة نهائياً؟"))return;
   try{
+    const tx=mgrTx().find(x=>x.id===id);
     await db.collection("transfers").doc(String(id)).delete();
     await db.collection("transfer_images").doc(String(id)).delete().catch(()=>{});
     toast("تم حذف الحوالة");
+    if(tx) logActivity("حذف حوالة", `${branchName(tx.branchId)} · ${fmtAmount(tx.amount)} ريال`);
   }catch(e){ console.error(e); toast("تعذّر الحذف"); }
 }
 async function setTransferStatus(id,status,reason){
   const t=TRANSFERS.find(x=>x.id===id); if(!t)return;
   const upd={...t,status,decidedAt:Date.now(),notifiedBranch:false};
   if(reason!==undefined) upd.rejectReason=reason;
-  try{ await db.collection("transfers").doc(String(id)).set(upd); }
+  try{ await db.collection("transfers").doc(String(id)).set(upd);
+    logActivity(status==="confirmed"?"تأكيد حوالة":"رفض حوالة", `${branchName(t.branchId)} · ${fmtAmount(t.amount)} ريال${reason?" · السبب: "+reason:""}`); }
   catch(e){ console.error(e); toast("تعذّر التحديث"); }
 }
 
@@ -2395,7 +2484,7 @@ function renderBranchTransfers(){
 
 
 function filterTx(k){
-  const list=[...TRANSFERS].sort((a,b)=>b.t-a.t);
+  const list=[...mgrTx()].sort((a,b)=>b.t-a.t);
   if(k==="all")return list;
   return list.filter(t=>t.status===k);
 }
@@ -2409,7 +2498,7 @@ function exportTransfersExcel(){
   const rows=[["رقم الحوالة","التاريخ","الفرع","المبلغ","البنك","رقم العملية","رقم الفاتورة","المحوِّل","الحالة","وقت التأكيد/الرفض","سبب الرفض","ملاحظة"]];
   list.forEach(t=>{
     rows.push([
-      t.id,
+      csvText(t.id),
       new Date(t.t).toLocaleString("ar-SA"),
       branchName(t.branchId),
       t.amount,
@@ -2423,7 +2512,7 @@ function exportTransfersExcel(){
       t.note||""
     ]);
   });
-  const csv=rows.map(r=>r.map(c=>{const s=String(c).replace(/"/g,'""');return /[",\n]/.test(s)?`"${s}"`:s;}).join(",")).join("\r\n");
+  const csv=toCSV(rows);
   const blob=new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8;"});
   const url=URL.createObjectURL(blob);
   const a=document.createElement("a");
@@ -2438,7 +2527,7 @@ function startCatListener(){
   if(catAttached) return; catAttached=true;
   catUnsub=db.collection("catalog_adds").onSnapshot(snap=>{
     catRetries=0;
-    CAT_ADDS=snap.docs.map(d=>d.data()).sort((a,b)=>b.t-a.t); catCache=null;
+    CAT_ADDS=snap.docs.map(d=>cleanNums(d.data())).sort((a,b)=>b.t-a.t); catCache=null;
     const appEl=document.getElementById("app"), mgrEl=document.getElementById("mgr");
     if(appEl && !appEl.classList.contains("hidden") && branchMode==="catalog") renderCatalog();
     if(mgrEl && !mgrEl.classList.contains("hidden")) renderMgrCatalog();
@@ -2504,7 +2593,9 @@ async function submitCatAdd(){
   Object.assign(doc,{id, branchId:me.id, status:IS_ADMIN?"approved":"pending", t:now, createdAt:now});
   if(IS_ADMIN) doc.decidedAt=now;
   const btn=document.getElementById("caSubmit"); btn.disabled=true; btn.textContent="جارٍ الإرسال…";
-  try{ await db.collection("catalog_adds").doc(String(id)).set(doc); closeCatAdd(); toast(IS_ADMIN?"تمت الإضافة للكتالوج ✓":"تم الإرسال — بانتظار اعتماد الإدارة"); }
+  if(IS_ADMIN) doc.notified=true; else doc.notified=false;
+  try{ await db.collection("catalog_adds").doc(String(id)).set(doc); closeCatAdd();
+    logActivity(IS_ADMIN?"إضافة للكتالوج (معتمدة)":"اقتراح إضافة للكتالوج", catAddLabel(doc)); toast(IS_ADMIN?"تمت الإضافة للكتالوج ✓":"تم الإرسال — بانتظار اعتماد الإدارة"); }
   catch(e){ console.error(e); toast(e.code==="permission-denied"?"تعذّر الإرسال: صلاحيات قاعدة البيانات لا تسمح":"تعذّر الإرسال"); }
   btn.disabled=false; btn.textContent="إرسال للاعتماد";
 }
@@ -2545,13 +2636,52 @@ function renderMgrCatalog(){
 async function decideCatAdd(id,status){
   let reason="";
   if(status==="rejected"){ const r=prompt("سبب الرفض (اختياري):",""); if(r===null) return; reason=r.trim(); }
-  try{ await db.collection("catalog_adds").doc(String(id)).update({status, decidedAt:Date.now(), rejectReason:reason}); toast(status==="approved"?"تم الاعتماد — ظهرت في الكتالوج":"تم الرفض"); }
+  const ad=CAT_ADDS.find(x=>x.id===id);
+  try{ await db.collection("catalog_adds").doc(String(id)).update({status, decidedAt:Date.now(), rejectReason:reason, notifiedBranch:false});
+    if(ad) logActivity(status==="approved"?"اعتماد إضافة كتالوج":"رفض إضافة كتالوج", catAddLabel(ad)+(reason?" · السبب: "+reason:""));
+    toast(status==="approved"?"تم الاعتماد — ظهرت في الكتالوج":"تم الرفض"); }
   catch(e){ console.error(e); toast("تعذّر الحفظ"); }
 }
 async function removeCatAdd(id,restore){
   if(!confirm(restore?"استرجاع هذا العنصر للكتالوج؟":"حذف هذه الإضافة نهائياً؟")) return;
-  try{ await db.collection("catalog_adds").doc(String(id)).delete(); toast(restore?"تم الاسترجاع":"تم الحذف"); }
+  const ad=CAT_ADDS.find(x=>x.id===id);
+  try{ await db.collection("catalog_adds").doc(String(id)).delete(); toast(restore?"تم الاسترجاع":"تم الحذف");
+    if(ad) logActivity(restore?"استرجاع رمز للكتالوج":"حذف إضافة كتالوج", ad.kind==="hide"?(ad.label||ad.key):catAddLabel(ad)); }
   catch(e){ console.error(e); toast("تعذّر الحذف"); }
+}
+
+/* ===== سجل النشاط: مين سوّى وش ومتى (للإدارة) ===== */
+let ACTIVITY=[], actAttached=false, actUnsub=null;
+function catAddLabel(a){ return a.kind==="car" ? `${a.car} · ${a.code}` : `${a.cat||""} · ${a.name||""} ${a.code||""}`; }
+function activityActor(){
+  const inBranch=me && !document.getElementById("app").classList.contains("hidden");
+  if(IS_ADMIN) return inBranch ? `الإدارة (من واجهة ${me.name})` : "الإدارة";
+  return me ? me.name : "—";
+}
+function logActivity(action,target){
+  const now=Date.now(), id=newReqId();
+  db.collection("activity").doc(String(id)).set({id, t:now, action, target:String(target||""), actor:activityActor(),
+    admin:IS_ADMIN, branchId:me?me.id:0}).catch(e=>console.warn("activity:",e));
+}
+function startActListener(){
+  if(actAttached) return; actAttached=true;
+  const cutoff=Date.now()-READ_WINDOW_DAYS*86400000;
+  actUnsub=db.collection("activity").where("t",">=",cutoff).onSnapshot(snap=>{
+    ACTIVITY=snap.docs.map(d=>cleanNums(d.data())).sort((a,b)=>b.t-a.t);
+    renderActivity();
+  }, err=>{ console.warn("activity snapshot:",err); actAttached=false; });
+}
+function renderActivity(){
+  const el=document.getElementById("actList"); if(!el) return;
+  const f=(document.getElementById("actFilter")||{}).value||"all";
+  const rows=ACTIVITY.filter(a=>f==="all"||(f==="admin"?a.admin:!a.admin)).slice(0,300);
+  el.innerHTML=rows.length?rows.map(a=>{
+    const ic=/حذف|مسح/.test(a.action)?"🗑":/رفض/.test(a.action)?"✕":/تأكيد|اعتماد|توفير|استرجاع/.test(a.action)?"✓":"＋";
+    const cls=ic==="🗑"||ic==="✕"?"neg":ic==="✓"?"pos":"";
+    return `<div class="act-row"><span class="act-ic ${cls}">${ic}</span><div class="act-body">
+      <div><b>${esc(a.action)}</b>${a.target?` — ${esc(a.target)}`:""}</div>
+      <div class="act-meta">${esc(a.actor)} · ${new Date(a.t).toLocaleString("ar-SA",{dateStyle:"medium",timeStyle:"short"})}</div></div></div>`;
+  }).join(""):`<div class="empty"><div class="ic">🕓</div>لا يوجد نشاط مسجّل بعد</div>`;
 }
 
 boot();
