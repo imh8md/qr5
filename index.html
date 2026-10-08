@@ -202,7 +202,7 @@
   .btn-cancel{background:var(--soft);color:var(--txt);border:1px solid var(--line)}
   .btn-send{background:var(--gold);color:#fff}
 
-  .toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);
+  .toast{position:fixed;bottom:92px;left:50%;transform:translateX(-50%);white-space:nowrap;max-width:94vw;overflow:hidden;text-overflow:ellipsis;
     background:var(--txt);color:#fff;padding:11px 22px;border-radius:24px;font-size:13px;
     z-index:60;opacity:0;transition:.25s;pointer-events:none;font-weight:600}
   .toast.show{opacity:1}
@@ -441,6 +441,17 @@
     background:var(--panel);font-size:12px;cursor:pointer;opacity:.75}
   .cat-del:hover{opacity:1;background:var(--red-bg);border-color:var(--red)}
   .gen-card .cat-del{bottom:auto;top:40px;right:6px;left:auto}
+  .st-panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:6px 14px 14px;margin-top:12px;max-width:640px}
+  .st-lbl{font-size:12px;font-weight:700;color:var(--muted);margin-top:10px}
+  .st-chips{margin-top:6px;flex-wrap:wrap;overflow:visible}
+  .st-chips .cat-chip.active{background:var(--txt);border-color:var(--txt)}
+  .st-result{margin-top:16px;border-radius:12px;padding:16px;text-align:center}
+  .st-result.code-card{background:#fbeae8;border-color:#f1c9c3}
+  .st-code{direction:ltr;font-family:"Courier New",monospace;font-size:22px;font-weight:700;letter-spacing:1px;color:#c0392b}
+  .st-hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+  .st-result.empty-res{background:var(--soft);color:var(--muted);font-size:13px}
+  .cat-seg button{white-space:nowrap}
+  @media(max-width:420px){.cat-seg button{font-size:12px;padding:9px 4px}}
   .cat-add-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
   .cat-add-bar .newreq-btn{background:#c0392b}
   .cat-new{position:absolute;top:6px;right:8px;font-size:10px;font-weight:700;color:#c0392b;background:#fbeae8;
@@ -454,7 +465,7 @@
   .ca-rej{background:var(--red-bg);color:var(--red);border:none;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer}
   .attn.cat.hot{border-inline-start-color:#c0392b} .attn.cat.hot b{color:#c0392b}
   .cat-wrap{padding:14px 24px 0;max-width:1000px;margin-inline:auto}
-  .cat-seg{display:flex;background:var(--soft);border-radius:12px;padding:4px;gap:4px;max-width:420px}
+  .cat-seg{display:flex;background:var(--soft);border-radius:12px;padding:4px;gap:4px;max-width:520px}
   .cat-seg button{flex:1;border:none;background:none;padding:9px;border-radius:9px;font-size:13.5px;
     font-weight:700;color:var(--muted);cursor:pointer}
   .cat-seg button.active{background:var(--panel);color:#c0392b;box-shadow:0 1px 3px rgba(0,0,0,.08)}
@@ -737,6 +748,7 @@
       <div class="cat-seg">
         <button id="catSegCars" class="active" onclick="setCatSection('cars')">🚗 رموز السيارات</button>
         <button id="catSegGen" onclick="setCatSection('general')">⚙️ أرقام عامة</button>
+        <button id="catSegStripe" onclick="setCatSection('stripes')">〰️ خطوط السيارات</button>
       </div>
       <div class="cat-search"><input id="catSearch" placeholder="🔍 ابحث برمز، سيارة، موديل، محرك أو اسم القطعة…" oninput="renderCatalog()"></div>
       <div id="catBody"></div>
@@ -2141,6 +2153,7 @@ function renderCatalog(){
   updateMyCatPending();
   document.getElementById("catSegCars").classList.toggle("active",catSection==="cars");
   document.getElementById("catSegGen").classList.toggle("active",catSection==="general");
+  document.getElementById("catSegStripe").classList.toggle("active",catSection==="stripes");
   const q=catNorm(document.getElementById("catSearch").value);
   if(q){
     const cars=catCarRows().filter(r=>[r.code,r.car,r.group,r.desc,r.years,r.engine].some(v=>catNorm(v).includes(q)));
@@ -2153,6 +2166,7 @@ function renderCatalog(){
         `<div class="rs">أرقام عامة · ${esc(it.cat)}</div><div class="rl">${esc(it.name)}</div></div><div class="rc">${esc(it.code)}</div></div>`).join("")+`</div>`;
     return;
   }
+  if(catSection==="stripes"){ body.innerHTML=stripesHTML(); return; }
   if(catSection==="cars"){
     const C=catData();
     const carNames=Object.keys(C.cars);
@@ -2174,6 +2188,35 @@ function renderCatalog(){
       `<div class="cat-hint">اضغط على المنتج لنسخ رقمه</div><div class="cat-grid gen-grid">`+items.map(it=>genCardHTML(it,it.ref)).join("")+`</div>`;
   }
 }
+/* خطوط السيارات: اختر السيارة والسنة والنوع والجهة ← يتكوّن رقم القطعة */
+let stripeSel={car:null,yr:null,tp:null,sd:null};
+function stripeCode(){
+  const S=CATALOG.stripes, c=S.cars[stripeSel.car]; if(!c) return null;
+  if(stripeSel.yr===null||stripeSel.tp===null||stripeSel.sd===null) return null;
+  const y=c.years[stripeSel.yr]; if(!y) return null;
+  const mid=typeof y.code==="object"?y.code[stripeSel.tp]:y.code+stripeSel.tp;
+  if(mid===undefined) return null;
+  return c.prefix+mid+(stripeSel.sd?"-"+stripeSel.sd:"");
+}
+function stripesHTML(){
+  const S=CATALOG.stripes; if(!S) return `<div class="empty">لا توجد بيانات</div>`;
+  const cars=Object.keys(S.cars);
+  if(!S.cars[stripeSel.car]) stripeSel={car:cars[0],yr:null,tp:null,sd:null};
+  const c=S.cars[stripeSel.car];
+  if(c.types.length===1) stripeSel.tp=c.types[0].k;   // نوع واحد: يُختار تلقائياً
+  const chips=(key,opts)=>`<div class="cat-chips st-chips">`+opts.map(o=>
+    `<button class="cat-chip${stripeSel[key]!==null&&String(stripeSel[key])===o.v?" active":""}" data-stripe="${key}" data-v="${esc(o.v)}">${esc(o.label)}</button>`).join("")+`</div>`;
+  const code=stripeCode();
+  return `<div class="cat-chips">`+cars.map(n=>`<button class="cat-chip${n===stripeSel.car?" active":""}" data-stripe="car" data-v="${esc(n)}">${esc(n)}</button>`).join("")+`</div>`+
+    `<div class="st-panel">`+
+    `<div class="st-lbl">السنة</div>`+chips("yr",c.years.map((y,i)=>({v:String(i),label:y.label})))+
+    `<div class="st-lbl">نوع السيارة</div>`+chips("tp",c.types.map(t=>({v:t.k,label:t.label})))+
+    `<div class="st-lbl">جهة القطعة</div>`+chips("sd",S.sides.map(x=>({v:x.k,label:x.label})))+
+    (code
+      ? `<div class="st-result code-card" data-copy="${esc(code)}L#"><div class="st-code">${esc(code)}</div><div class="st-hint">اضغط للنسخ مع L#</div></div>`
+      : `<div class="st-result empty-res">اختر السنة والنوع والجهة</div>`)+
+    `</div>`;
+}
 function catZoom(code){
   const it=catGenItems().find(x=>x.code===code); if(!it) return;
   const lb=document.createElement("div"); lb.className="cat-lb";
@@ -2187,6 +2230,11 @@ document.addEventListener("click",e=>{
   const v=document.getElementById("catalogView"); if(!v || !v.contains(e.target)) return;
   const cd=e.target.closest("[data-catdel]"); if(cd){ adminDelCatItem(cd.dataset.catdel, cd.dataset.ref); return; }
   const z=e.target.closest("[data-zoom]"); if(z){ catZoom(z.dataset.zoom); return; }
+  const st=e.target.closest("[data-stripe]");
+  if(st){ const k=st.dataset.stripe, v=st.dataset.v;
+    if(k==="car") stripeSel={car:v,yr:null,tp:null,sd:null};
+    else stripeSel[k]=(k==="yr")?+v:v;
+    renderCatalog(); return; }
   const c=e.target.closest("[data-car]"); if(c){ catCar=c.dataset.car; renderCatalog(); return; }
   const g=e.target.closest("[data-group]"); if(g){ catGroup[catCar]=g.dataset.group; renderCatalog(); return; }
   const t=e.target.closest("[data-gen]"); if(t){ catGenTab=t.dataset.gen; renderCatalog(); return; }
