@@ -15,16 +15,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="assets/catalog/catalog-data.js" defer></script>
 <style>
-  @font-face{font-family:'Handicrafts';font-weight:400;font-style:normal;font-display:swap;
-    src:url(assets/fonts/TheYearofHandicrafts-Regular.otf) format('opentype')}
-  @font-face{font-family:'Handicrafts';font-weight:500;font-style:normal;font-display:swap;
-    src:url(assets/fonts/TheYearofHandicrafts-Medium.otf) format('opentype')}
-  @font-face{font-family:'Handicrafts';font-weight:600;font-style:normal;font-display:swap;
-    src:url(assets/fonts/TheYearofHandicrafts-SemiBold.otf) format('opentype')}
-  @font-face{font-family:'Handicrafts';font-weight:700;font-style:normal;font-display:swap;
-    src:url(assets/fonts/TheYearofHandicrafts-Bold.otf) format('opentype')}
-  @font-face{font-family:'Handicrafts';font-weight:900;font-style:normal;font-display:swap;
-    src:url(assets/fonts/TheYearofHandicrafts-Black.otf) format('opentype')}
+  @font-face{font-family:'Thmanyah Sans';font-weight:300;font-style:normal;font-display:swap;
+    src:url(assets/fonts/thmanyahsans-Light.woff2) format('woff2')}
+  @font-face{font-family:'Thmanyah Sans';font-weight:400;font-style:normal;font-display:swap;
+    src:url(assets/fonts/thmanyahsans-Regular.woff2) format('woff2')}
+  @font-face{font-family:'Thmanyah Sans';font-weight:500;font-style:normal;font-display:swap;
+    src:url(assets/fonts/thmanyahsans-Medium.woff2) format('woff2')}
+  @font-face{font-family:'Thmanyah Sans';font-weight:700;font-style:normal;font-display:swap;
+    src:url(assets/fonts/thmanyahsans-Bold.woff2) format('woff2')}
+  @font-face{font-family:'Thmanyah Sans';font-weight:900;font-style:normal;font-display:swap;
+    src:url(assets/fonts/thmanyahsans-Black.woff2) format('woff2')}
   :root{
     --bg:#f5f4ef; --panel:#ffffff; --soft:#f0eee7; --line:#e5e2d8;
     --gold:#cc785c; --gold-soft:#f6e8e1; --txt:#1f1e1b; --muted:#8a8175;
@@ -33,7 +33,7 @@
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{-webkit-text-size-adjust:100%}
-  body{font-family:'Handicrafts',"Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--txt);
+  body{font-family:'Thmanyah Sans',"Segoe UI",Tahoma,sans-serif;background:var(--bg);color:var(--txt);
     -webkit-font-smoothing:antialiased;line-height:1.55;font-size:15px}
   .wrap{max-width:1180px;margin:0 auto;padding:0 0 40px}
   .hidden{display:none!important}
@@ -258,9 +258,10 @@
     .mgr-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
     .mgr-nav button{padding:8px 3px;font-size:12px;white-space:normal;line-height:1.35}
     .nav-badge{min-width:16px;padding:0 4px;font-size:10px;line-height:16px}
-    .kpi-grid{grid-template-columns:repeat(2,1fr)}
-    .kpi:nth-child(2){border-inline-end:none}
-    .kpi:nth-child(-n+2){border-bottom:1px solid var(--line)}
+    .mgr-body .kpi-grid{grid-template-columns:repeat(2,1fr)}
+    .mgr-body .kpi:nth-child(2){border-inline-end:none}
+    .mgr-body .kpi:nth-child(-n+2){border-bottom:1px solid var(--line)}
+    #mgr .bname{display:none}
   }
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
     padding:16px;margin-bottom:14px}
