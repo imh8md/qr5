@@ -224,6 +224,7 @@
   .mgr-body .panel{margin-bottom:0}
   .mgr-body .kpi-panel{grid-column:1/-1}
   .mgr-body .span-all{grid-column:1/-1}
+  .mgr-body>*{min-width:0}
   .mgr-stats{grid-template-columns:repeat(5,1fr)}
   .mgr-nav{position:sticky;top:0;z-index:20;display:flex;gap:6px;padding:10px 24px;background:var(--bg);
     border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
@@ -414,6 +415,18 @@
     font-weight:700;cursor:pointer;line-height:1}
   .sp-qty b{min-width:22px;font-size:15px}
   .sup-other-lbl{font-size:12px;color:var(--muted);font-weight:600;margin:14px 0 6px}
+  .admin-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--txt);color:#fff;
+    padding:9px 24px;font-size:13px;font-weight:600;position:sticky;top:0;z-index:30}
+  .admin-bar select{background:#fff;border:none;border-radius:8px;padding:6px 8px;font-family:inherit;font-size:13px;max-width:200px}
+  .admin-bar button{margin-inline-start:auto;background:var(--gold);color:#fff;border:none;border-radius:8px;
+    padding:7px 12px;font-weight:700;font-size:12.5px;cursor:pointer}
+  .as-branch-btn{padding:8px 12px;font-size:12.5px}
+  @media(max-width:480px){.admin-bar{padding:8px 16px}.admin-bar>span{display:none}.admin-bar select{flex:1;max-width:none}
+    .as-branch-btn{font-size:0;padding:8px 10px}.as-branch-btn::before{content:"🏪";font-size:15px}}
+  .cat-del{position:absolute;bottom:6px;left:6px;z-index:2;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel);font-size:12px;cursor:pointer;opacity:.75}
+  .cat-del:hover{opacity:1;background:var(--red-bg);border-color:var(--red)}
+  .gen-card .cat-del{bottom:auto;top:40px;right:6px;left:auto}
   .cat-add-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
   .cat-add-bar .newreq-btn{background:#c0392b}
   .cat-new{position:absolute;top:6px;right:8px;font-size:10px;font-weight:700;color:#c0392b;background:#fbeae8;
@@ -611,6 +624,11 @@
 
 <!-- الموقع -->
 <div class="wrap hidden" id="app">
+  <div class="admin-bar hidden" id="adminBar">
+    <span>👑 أنت تتصفح كإدارة:</span>
+    <select id="adminBranchSel" onchange="openAsBranch(this.value)"></select>
+    <button onclick="backToAdmin()">↩ رجوع للوحة الإدارة</button>
+  </div>
   <header>
     <div class="hd-top">
       <div class="brand">
@@ -720,6 +738,7 @@
       <img src="assets/logo.png" alt="القرعاوي" class="hd-logo hd-logo-center">
       <div class="hd-actions">
         <span class="conn-dot loading" id="connDotMgr" title="حالة الاتصال بالسحابة">جاري الاتصال…</span>
+        <button class="newreq-btn as-branch-btn" onclick="openAsBranch(BRANCHES[0].id)" title="ادخل واجهة أي فرع">🏪 واجهة الفروع</button>
         <button class="icon-btn" id="notifBtnMgr" onclick="enableNotifications()" title="فعّل إشعارات الحوالات">🔕</button>
         <button class="logout" onclick="mgrLogout()">خروج</button>
       </div>
@@ -1167,7 +1186,7 @@ auth.onAuthStateChanged(async user=>{
       const el=document.getElementById(id); if(el) el.classList.add("hidden");
     });
     const lg=document.getElementById("login"); if(lg) lg.classList.remove("hidden");
-    me=null; currentSubId=null; pinBuf=""; mPinBuf="";
+    me=null; currentSubId=null; pinBuf=""; mPinBuf=""; IS_ADMIN=false;
     listenerAttached=false; snapRetries=0; if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; }
     txAttached=false; txRetries=0; if(txUnsub){ try{txUnsub();}catch(e){} txUnsub=null; } TRANSFERS=[];
     supAttached=false; supRetries=0; if(supUnsub){ try{supUnsub();}catch(e){} supUnsub=null; } SUPPLIES=[];
@@ -1179,6 +1198,7 @@ auth.onAuthStateChanged(async user=>{
   // تأكد من جاهزية رمز الدخول قبل ربط المستمع (يمنع سباق التوقيت)
   try{ await user.getIdToken(); }catch(e){}
   const email=(user.email||"").toLowerCase();
+  IS_ADMIN = email==="admin@qrawi.app";
   if(email==="admin@qrawi.app"){
     startListener(); startTxListener(); startSupListener(); startCatListener(); enterMgr();
   }else if(email==="accountant@qrawi.app"){
@@ -1199,6 +1219,7 @@ function saveData(){ /* no-op: الحفظ يتم لكل طلب على حدة */ 
 
 const $=s=>document.querySelector(s);
 let me=null, activeTab="all", pinBuf="";
+let IS_ADMIN=false;  // دخول الإدارة: صلاحيات كاملة (حذف + واجهة الفروع)
 
 function branchName(id){const b=BRANCHES.find(x=>x.id===id);return b?b.name:"—";}
 function timeAgo(t){
@@ -1240,7 +1261,9 @@ async function tryLogin(){
 }
 function enter(b){
   me={id:b.id,name:b.name};
-  currentSubId=b.id;
+  if(!IS_ADMIN) currentSubId=b.id;   // الإدارة تبقى على إشعارات الحوالات
+  const ab=document.getElementById("adminBar"); if(ab){ ab.classList.toggle("hidden",!IS_ADMIN);
+    if(IS_ADMIN) document.getElementById("adminBranchSel").value=String(b.id); }
   $("#login").classList.add("hidden");
   $("#mgr").classList.add("hidden");
   $("#mgrLogin").classList.add("hidden");
@@ -1250,11 +1273,21 @@ function enter(b){
   $("#f-to").innerHTML=BRANCHES.filter(x=>x.id!==b.id).map(x=>`<option value="${x.id}">${x.name}</option>`).join("");
   refreshSoundBtn();
   refreshNotifBtn();
-  subscribePush();  // إعادة الاشتراك تلقائياً إن كان الإذن ممنوحاً مسبقاً
+  if(!IS_ADMIN) subscribePush();  // إعادة الاشتراك تلقائياً إن كان الإذن ممنوحاً مسبقاً
   render();
-  setBranchMode("parts");
+  setBranchMode(IS_ADMIN && typeof branchMode!=="undefined" ? branchMode : "parts");
 }
-function logout(){ auth.signOut(); }  // onAuthStateChanged يعيد عرض شاشة الدخول
+function logout(){ if(IS_ADMIN){ backToAdmin(); return; } auth.signOut(); }  // onAuthStateChanged يعيد عرض شاشة الدخول
+// الإدارة: الدخول لواجهة أي فرع والرجوع
+function openAsBranch(id){
+  const b=BRANCHES.find(x=>x.id===+id)||BRANCHES[0];
+  enter(b); window.scrollTo({top:0});
+}
+function backToAdmin(){
+  $("#app").classList.add("hidden"); $("#fab").classList.add("hidden");
+  const ab=document.getElementById("adminBar"); if(ab) ab.classList.add("hidden");
+  enterMgr();
+}
 
 /* حالة الطلب */
 function reqState(r){
@@ -1368,7 +1401,7 @@ function cardHTML(req){
 
   const noteHTML=req.note?`<div class="card-note">📝 ${req.note}</div>`:"";
   // أيقونة حذف بالزاوية: لصاحب الطلب فقط، على أي حالة
-  const delBtn=iAmAsker
+  const delBtn=(iAmAsker||IS_ADMIN)
     ? `<button class="card-del" title="حذف الطلب" onclick="deleteReq(${req.id})">🗑</button>` : "";
 
   return `<div class="card ${directed?'directed':''}">
@@ -1539,6 +1572,7 @@ function enterMgr(){
   $("#app").classList.add("hidden");
   $("#fab").classList.add("hidden");
   $("#mgr").classList.remove("hidden");
+  $("#adminBranchSel").innerHTML=BRANCHES.map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
   $("#flt-branch").innerHTML=`<option value="all">كل الفروع</option>`+
     BRANCHES.map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
   renderMgr();
@@ -1933,22 +1967,49 @@ function catData(){
     if(a.kind==="car"){
       const groups=d.cars[a.car]||(d.cars[a.car]={});
       const g=a.group||(Object.keys(groups).length===1?Object.keys(groups)[0]:a.car);
-      (groups[g]||(groups[g]=[])).push({code:a.code,years:a.years||"",engine:a.engine||"",desc:a.desc||"",added:true});
+      (groups[g]||(groups[g]=[])).push({code:a.code,years:a.years||"",engine:a.engine||"",desc:a.desc||"",added:true,addId:a.id});
     }else if(a.kind==="general"){
-      (d.general[a.cat]||(d.general[a.cat]=[])).push({name:a.name,code:a.code,cars:a.cars||"",img:catSafeImg(a.img),added:true});
+      (d.general[a.cat]||(d.general[a.cat]=[])).push({name:a.name,code:a.code,cars:a.cars||"",img:catSafeImg(a.img),added:true,addId:a.id});
     }
   });
+  // العناصر الأصلية التي حذفتها الإدارة (مخفية — قابلة للاسترجاع)
+  const hidden=new Set(CAT_ADDS.filter(a=>a.kind==="hide").map(a=>a.key));
+  if(hidden.size){
+    for(const car in d.cars){ for(const g in d.cars[car]){
+      d.cars[car][g]=d.cars[car][g].filter(r=>r.added||!hidden.has(catKeyCar(car,g,r)));
+      if(!d.cars[car][g].length) delete d.cars[car][g]; }
+      if(!Object.keys(d.cars[car]).length) delete d.cars[car]; }
+    for(const cat in d.general){ d.general[cat]=d.general[cat].filter(it=>it.added||!hidden.has(catKeyGen(cat,it)));
+      if(!d.general[cat].length) delete d.general[cat]; }
+  }
   return catCache=d;
+}
+function catKeyCar(car,g,r){ return ["car",car,g,r.code,r.years].join("|"); }
+function catKeyGen(cat,it){ return ["gen",cat,it.code].join("|"); }
+// حذف من الكتالوج (للإدارة): الإضافة تُحذف، والأصلي يُخفى
+async function adminDelCatItem(kind,ref){
+  if(!IS_ADMIN) return;
+  let label="", addId=null, key="";
+  if(kind==="car"){ const [car,g,i]=ref.split("§"); const r=catData().cars[car][g][+i]; label=r.code+" — "+car; addId=r.addId; key=catKeyCar(car,g,r); }
+  else { const [cat,i]=ref.split("§"); const it=catData().general[cat][+i]; label=it.name+" "+it.code; addId=it.addId; key=catKeyGen(cat,it); }
+  if(!confirm("حذف «"+label+"» من الكتالوج؟")) return;
+  try{
+    if(addId) await db.collection("catalog_adds").doc(String(addId)).delete();
+    else { const id=newReqId(); await db.collection("catalog_adds").doc(String(id)).set({id,kind:"hide",key,label,branchId:me?me.id:0,status:"hidden",t:Date.now()}); }
+    toast("تم الحذف من الكتالوج");
+  }catch(e){ console.error(e); toast("تعذّر الحذف"); }
 }
 function catCarRows(){ const C=catData(), out=[]; for(const car in C.cars) for(const g in C.cars[car]) C.cars[car][g].forEach(r=>out.push({car,group:g,...r})); return out; }
 function catGenItems(){ const C=catData(), out=[]; for(const cat in C.general) C.general[cat].forEach(it=>out.push({cat,...it})); return out; }
-function codeCardHTML(r){
-  return `<div class="code-card" data-copy="${esc(r.code)}L#">${r.added?'<span class="cat-new">مضاف</span>':''}<div class="cc-code">${esc(r.code)}</div>`+
+function codeCardHTML(r,ref){
+  const del=IS_ADMIN&&ref!==undefined?`<button class="cat-del" data-catdel="car" data-ref="${esc(ref)}" title="حذف">🗑</button>`:"";
+  return `<div class="code-card" data-copy="${esc(r.code)}L#">${del}${r.added?'<span class="cat-new">مضاف</span>':''}<div class="cc-code">${esc(r.code)}</div>`+
     `<div class="cc-desc">${esc(r.desc)}</div><div class="cc-meta">${esc(r.years)} · ${esc(r.engine)}</div></div>`;
 }
-function genCardHTML(it){
+function genCardHTML(it,ref){
   const img=it.img?`<img src="${esc(it.img)}" alt="" loading="lazy">`:`<span class="ph">⚙️</span>`;
-  return `<div class="gen-card" data-copy="${esc(it.code)}">${it.added?'<span class="cat-new">مضاف</span>':''}<div class="gen-img">${img}</div>`+
+  const del=IS_ADMIN&&ref!==undefined?`<button class="cat-del" data-catdel="gen" data-ref="${esc(ref)}" title="حذف">🗑</button>`:"";
+  return `<div class="gen-card" data-copy="${esc(it.code)}">${del}${it.added?'<span class="cat-new">مضاف</span>':''}<div class="gen-img">${img}</div>`+
     (it.img?`<button class="gen-zoom" data-zoom="${esc(it.code)}" title="تكبير">🔍</button>`:"")+
     `<div class="gen-body"><div class="gen-name">${esc(it.name)}</div><div class="gen-code">${esc(it.code)}</div>`+
     `<div class="gen-cars">${esc(it.cars)}</div></div></div>`;
@@ -1980,14 +2041,16 @@ function renderCatalog(){
     body.innerHTML=`<div class="cat-chips">`+carNames.map(c=>`<button class="cat-chip${c===catCar?" active":""}" data-car="${esc(c)}">${esc(c)}</button>`).join("")+`</div>`+
       (groups.length>1?`<div class="cat-chips sub">`+groups.map(g=>`<button class="cat-chip${g===catGroup[catCar]?" active":""}" data-group="${esc(g)}">${esc(g)}</button>`).join("")+`</div>`:"")+
       `<div class="cat-hint">اضغط على الرمز لنسخه مع L# جاهز للبحث</div>`+
-      `<div class="cat-grid">`+C.cars[catCar][catGroup[catCar]].map(codeCardHTML).join("")+`</div>`;
+      `<div class="cat-grid">`+C.cars[catCar][catGroup[catCar]].map((r,i)=>codeCardHTML(r,catCar+"§"+catGroup[catCar]+"§"+i)).join("")+`</div>`;
   } else {
     const C=catData();
     const tabs=["الكل",...Object.keys(C.general)];
     if(!tabs.includes(catGenTab)) catGenTab="الكل";
-    const items=catGenTab==="الكل"?catGenItems():C.general[catGenTab];
+    const items=catGenTab==="الكل"
+      ? Object.keys(C.general).flatMap(cat=>C.general[cat].map((it,i)=>({...it,ref:cat+"§"+i})))
+      : C.general[catGenTab].map((it,i)=>({...it,ref:catGenTab+"§"+i}));
     body.innerHTML=`<div class="cat-chips">`+tabs.map(t=>`<button class="cat-chip${t===catGenTab?" active":""}" data-gen="${esc(t)}">${esc(t)}</button>`).join("")+`</div>`+
-      `<div class="cat-hint">اضغط على المنتج لنسخ رقمه</div><div class="cat-grid gen-grid">`+items.map(genCardHTML).join("")+`</div>`;
+      `<div class="cat-hint">اضغط على المنتج لنسخ رقمه</div><div class="cat-grid gen-grid">`+items.map(it=>genCardHTML(it,it.ref)).join("")+`</div>`;
   }
 }
 function catZoom(code){
@@ -2001,6 +2064,7 @@ function catZoom(code){
 }
 document.addEventListener("click",e=>{
   const v=document.getElementById("catalogView"); if(!v || !v.contains(e.target)) return;
+  const cd=e.target.closest("[data-catdel]"); if(cd){ adminDelCatItem(cd.dataset.catdel, cd.dataset.ref); return; }
   const z=e.target.closest("[data-zoom]"); if(z){ catZoom(z.dataset.zoom); return; }
   const c=e.target.closest("[data-car]"); if(c){ catCar=c.dataset.car; renderCatalog(); return; }
   const g=e.target.closest("[data-group]"); if(g){ catGroup[catCar]=g.dataset.group; renderCatalog(); return; }
@@ -2086,7 +2150,7 @@ function supCardHTML(s, forMgr){
   const branchLine = forMgr ? `<div class="sup-branch">${branchName(s.branchId)}</div>` : "";
   const note = s.note ? `<div class="sup-note">📝 ${esc(s.note)}</div>` : "";
   const foot = (forMgr && s.status!=="done") ? `<div class="sup-foot"><button class="sup-done-btn" onclick="markSupplyDone(${s.id})">✓ تم التوفير</button></div>` : "";
-  const del = (!forMgr && s.status!=="done") ? `<button class="tx-del" onclick="deleteSupply(${s.id})" title="حذف">🗑</button>` : "";
+  const del = ((!forMgr && s.status!=="done") || IS_ADMIN) ? `<button class="tx-del" onclick="deleteSupply(${s.id})" title="حذف">🗑</button>` : "";
   return `<div class="sup-card ${s.status==='done'?'':'pending'}">
     ${del}
     <div class="sup-top">
@@ -2308,7 +2372,7 @@ function txCardHTML(t,forAcc){
       <button class="ia tx-confirm-btn" onclick="confirmTransfer(${t.id})">✓ تأكيد الاستلام</button>
     </div>`;
   }
-  const del=(!forAcc && t.status==="pending")?`<button class="tx-del" onclick="deleteTransfer(${t.id})" title="حذف">🗑</button>`:"";
+  const del=((!forAcc && t.status==="pending") || IS_ADMIN)?`<button class="tx-del" onclick="deleteTransfer(${t.id})" title="حذف">🗑</button>`:"";
   const branchLine=forAcc?`<div class="tx-branch">${esc(branchName(t.branchId))}</div>`:"";
   return `<div class="tx-card ${t.status}">
     ${del}
@@ -2386,7 +2450,8 @@ function startCatListener(){
 function updateMyCatPending(){
   const el=document.getElementById("catMyPending"); if(!el||!me) return;
   const n=CAT_ADDS.filter(a=>a.branchId===me.id&&a.status==="pending").length;
-  el.textContent = n ? `لديك ${n} إضافة بانتظار اعتماد الإدارة` : "تُعتمد الإضافة من الإدارة قبل ما تظهر للجميع.";
+  el.textContent = IS_ADMIN ? "إضافتك كإدارة تظهر للجميع مباشرة — وتقدر تحذف أي رمز بزر 🗑."
+    : n ? `لديك ${n} إضافة بانتظار اعتماد الإدارة` : "تُعتمد الإضافة من الإدارة قبل ما تظهر للجميع.";
 }
 function setCatAddKind(k){
   catAddKind=k;
@@ -2436,22 +2501,27 @@ async function submitCatAdd(){
     if(catGenItems().some(it=>catNorm(it.code)===catNorm(doc.code))){ toast("هذا الرقم موجود في الكتالوج"); return; }
   }
   const now=Date.now(), id=newReqId();
-  Object.assign(doc,{id, branchId:me.id, status:"pending", t:now, createdAt:now});
+  Object.assign(doc,{id, branchId:me.id, status:IS_ADMIN?"approved":"pending", t:now, createdAt:now});
+  if(IS_ADMIN) doc.decidedAt=now;
   const btn=document.getElementById("caSubmit"); btn.disabled=true; btn.textContent="جارٍ الإرسال…";
-  try{ await db.collection("catalog_adds").doc(String(id)).set(doc); closeCatAdd(); toast("تم الإرسال — بانتظار اعتماد الإدارة"); }
+  try{ await db.collection("catalog_adds").doc(String(id)).set(doc); closeCatAdd(); toast(IS_ADMIN?"تمت الإضافة للكتالوج ✓":"تم الإرسال — بانتظار اعتماد الإدارة"); }
   catch(e){ console.error(e); toast(e.code==="permission-denied"?"تعذّر الإرسال: صلاحيات قاعدة البيانات لا تسمح":"تعذّر الإرسال"); }
   btn.disabled=false; btn.textContent="إرسال للاعتماد";
 }
-const CAT_MGR_TABS=[{k:"pending",label:"بانتظار الاعتماد"},{k:"approved",label:"معتمدة"},{k:"rejected",label:"مرفوضة"}];
+const CAT_MGR_TABS=[{k:"pending",label:"بانتظار الاعتماد"},{k:"approved",label:"معتمدة"},{k:"rejected",label:"مرفوضة"},{k:"hidden",label:"محذوفة من الأصل"}];
 function setMgrCatTab(k){ mgrCatTab=k; renderMgrCatalog(); }
 function catAddCardHTML(a){
+  if(a.kind==="hide") return `<div class="sup-card"><div class="sup-top"><span class="ca-thumb ph">🗑</span>
+      <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:700">${esc(a.label||a.key)}</div>
+      <div style="font-size:11.5px;color:var(--muted)">حُذف من الكتالوج الأصلي ${timeAgo(a.t)}</div></div></div>
+    <div class="sup-foot"><button class="sup-done-btn" onclick="removeCatAdd(${a.id},true)">↩ استرجاع</button></div></div>`;
   const st={pending:["tx-pending","بانتظار الاعتماد"],approved:["tx-confirmed","معتمدة ✓"],rejected:["tx-rejected","مرفوضة"]}[a.status]||["",""];
   const img=a.kind==="general"&&catSafeImg(a.img)?`<img class="ca-thumb" src="${esc(catSafeImg(a.img))}" alt="">`:`<span class="ca-thumb ph">${a.kind==="car"?"🚗":"⚙️"}</span>`;
   const title=a.kind==="car"?`${esc(a.car)}${a.group?" · "+esc(a.group):""}`:`${esc(a.cat)} · ${esc(a.name)}`;
   const meta=a.kind==="car"?[a.desc,a.years,a.engine].filter(Boolean).map(esc).join(" · "):esc(a.cars||"");
   const foot=a.status==="pending"
     ? `<div class="sup-foot" style="gap:8px"><button class="ca-rej" onclick="decideCatAdd(${a.id},'rejected')">✕ رفض</button><button class="sup-done-btn" onclick="decideCatAdd(${a.id},'approved')">✓ اعتماد</button></div>`
-    : a.status==="approved" ? `<div class="sup-foot"><button class="ca-rej" onclick="removeCatAdd(${a.id})">🗑 حذف من الكتالوج</button></div>` : "";
+    : `<div class="sup-foot"><button class="ca-rej" onclick="removeCatAdd(${a.id})">🗑 ${a.status==="approved"?"حذف من الكتالوج":"حذف"}</button></div>`;
   return `<div class="sup-card ${a.status==='pending'?'pending ca-pending':''}">
     <div class="sup-top">${img}
       <div style="flex:1;min-width:0"><div class="sup-branch" style="color:#c0392b">${branchName(a.branchId)} · ${timeAgo(a.t)}</div>
@@ -2478,9 +2548,9 @@ async function decideCatAdd(id,status){
   try{ await db.collection("catalog_adds").doc(String(id)).update({status, decidedAt:Date.now(), rejectReason:reason}); toast(status==="approved"?"تم الاعتماد — ظهرت في الكتالوج":"تم الرفض"); }
   catch(e){ console.error(e); toast("تعذّر الحفظ"); }
 }
-async function removeCatAdd(id){
-  if(!confirm("حذف هذه الإضافة من الكتالوج؟")) return;
-  try{ await db.collection("catalog_adds").doc(String(id)).delete(); toast("تم الحذف"); }
+async function removeCatAdd(id,restore){
+  if(!confirm(restore?"استرجاع هذا العنصر للكتالوج؟":"حذف هذه الإضافة نهائياً؟")) return;
+  try{ await db.collection("catalog_adds").doc(String(id)).delete(); toast(restore?"تم الاسترجاع":"تم الحذف"); }
   catch(e){ console.error(e); toast("تعذّر الحذف"); }
 }
 
