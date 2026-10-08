@@ -699,7 +699,7 @@
   <div id="partsView">
     <div class="tx-bar parts-bar">
       <button class="newreq-btn" onclick="openSheet()">➕ طلب قطع جديد</button>
-      <span class="tx-hint">اطلب قطعة من فرع آخر — يوصله تنبيه ويرد عليك بالتوفّر.</span>
+      <span class="tx-hint">📅 طلبات اليوم — <b id="todayLbl"></b> · القائمة تبدأ من جديد كل يوم.</span>
     </div>
     <div class="tabs" id="tabs"></div>
     <div class="search-bar">
@@ -1208,10 +1208,24 @@ async function clearAllFromCloud(){
 
 // بدء الاستماع المباشر لتغييرات الطلبات (مرة واحدة بعد تسجيل الدخول)
 let listenerAttached=false, snapRetries=0, unsubSnap=null;
+// الفروع: طلبات اليوم فقط (كل يوم بيومه — يقلل القراءات بشكل كبير). الإدارة: آخر READ_WINDOW_DAYS يوم
+function startOfToday(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+function todayReqs(){ const t0=startOfToday(); return REQS.filter(r=>r.t>=t0); }
+let midnightTimer=null;
+function scheduleMidnightReset(){
+  clearTimeout(midnightTimer);
+  const next=startOfToday()+86400000+5000;   // بعد منتصف الليل بخمس ثواني
+  midnightTimer=setTimeout(()=>{
+    if(!IS_ADMIN && unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; listenerAttached=false; REQS=[]; startListener(); }
+    const appEl=document.getElementById("app"); if(appEl && !appEl.classList.contains("hidden") && me) render();
+    scheduleMidnightReset();
+  }, next-Date.now());
+}
 function startListener(){
   if(listenerAttached)return;
   listenerAttached=true;
-  const cutoff = Date.now() - READ_WINDOW_DAYS*86400000;
+  const cutoff = IS_ADMIN ? Date.now() - READ_WINDOW_DAYS*86400000 : startOfToday();
+  scheduleMidnightReset();
   unsubSnap = db.collection("requests").where("t",">=",cutoff).onSnapshot(snap=>{
     snapRetries=0;  // نجح — صفّر عدّاد إعادة المحاولة
     REQS = snap.docs.map(d=>cleanReq(d.data())).sort((a,b)=>b.t-a.t);
@@ -1245,7 +1259,7 @@ auth.onAuthStateChanged(async user=>{
     const lg=document.getElementById("login"); if(lg) lg.classList.remove("hidden");
     me=null; currentSubId=null; pinBuf=""; mPinBuf=""; IS_ADMIN=false; setAdminName("");
     document.getElementById("adminNameOverlay").classList.remove("show");
-    listenerAttached=false; snapRetries=0; if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; }
+    listenerAttached=false; snapRetries=0; if(unsubSnap){ try{unsubSnap();}catch(e){} unsubSnap=null; } clearTimeout(midnightTimer);
     txAttached=false; txRetries=0; if(txUnsub){ try{txUnsub();}catch(e){} txUnsub=null; } TRANSFERS=[];
     supAttached=false; supRetries=0; if(supUnsub){ try{supUnsub();}catch(e){} supUnsub=null; } SUPPLIES=[];
     ARCH_REQS=[]; ARCH_TX=[]; archLoaded=false;
@@ -1379,7 +1393,7 @@ const TABS=[
 ];
 function filterReqs(tab){
   // الموظف يرى فقط الطلبات التي تخص فرعه: صادرة منه أو موجّهة له
-  let list=[...REQS].filter(r=>r.from===me.id||r.to===me.id).sort((a,b)=>b.t-a.t);
+  let list=todayReqs().filter(r=>r.from===me.id||r.to===me.id).sort((a,b)=>b.t-a.t);
   if(tab==="directed")return list.filter(r=>r.to===me.id&&reqState(r)==="open");
   if(tab==="open")return list.filter(r=>reqState(r)!=="done");
   if(tab==="mine")return list.filter(r=>r.from===me.id);
@@ -1397,7 +1411,8 @@ function render(){
   }).join("");
 
   // إحصائيات فرعي فقط (طلبات صادرة منه أو موجّهة له)
-  const myReqs=REQS.filter(r=>r.from===me.id||r.to===me.id);
+  const myReqs=todayReqs().filter(r=>r.from===me.id||r.to===me.id);
+  const tl=document.getElementById("todayLbl"); if(tl) tl.textContent=new Date().toLocaleDateString("ar-SA",{weekday:"long",day:"numeric",month:"long"});
   const myItems=myReqs.flatMap(r=>r.items.map(i=>({...i,to:r.to,from:r.from})));
   $("#s-mine").textContent=myItems.filter(i=>i.to===me.id&&i.status==="pending").length;
   $("#s-open").textContent=myReqs.filter(r=>reqState(r)!=="done").length;
@@ -1412,7 +1427,7 @@ function render(){
   }
   $("#list").innerHTML = rows.length
     ? rows.map(cardHTML).join("")
-    : `<div class="empty"><div class="ic">📭</div>${q?"لا نتائج للبحث":"لا توجد طلبات هنا"}</div>`;
+    : `<div class="empty"><div class="ic">📭</div>${q?"لا نتائج للبحث":"لا توجد طلبات اليوم هنا"}</div>`;
 
   checkNewDirected();
   checkResponses();
@@ -1978,7 +1993,7 @@ function goToDirected(){hideNotif();activeTab="directed";render();
 // يُستدعى بعد كل تحديث للبيانات: يكشف الطلبات الجديدة الموجّهة لفرعي
 function checkNewDirected(){
   if(!me)return;
-  const directed=REQS.filter(r=>r.to===me.id&&reqState(r)==="open");
+  const directed=todayReqs().filter(r=>r.to===me.id&&reqState(r)==="open");
   const currentIds=new Set(directed.map(r=>r.id));
   // أول تحميل: سجّل الموجود بدون تنبيه
   if(lastDirectedIds._init){
@@ -1997,7 +2012,7 @@ function checkNewDirected(){
 let lastAnswered=new Set();
 function checkResponses(){
   if(!me)return;
-  const myItems=REQS.filter(r=>r.from===me.id)
+  const myItems=todayReqs().filter(r=>r.from===me.id)
     .flatMap(r=>r.items.filter(i=>i.status==="ready"||i.status==="unavailable"||i.status==="wh2")
       .map(i=>({key:r.id+"-"+i.id,part:i.part,status:i.status,to:r.to})));
   const currentKeys=new Set(myItems.map(x=>x.key));
