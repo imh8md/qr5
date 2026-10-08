@@ -358,6 +358,12 @@
   .ar-badge.arrived{background:var(--green-bg);color:var(--green)}
   .ar-badge.delay{background:var(--gold-soft);color:var(--gold)}
   #mode-supplies.active{background:#7a5cc9;border-color:#7a5cc9;color:#fff}
+  #mode-catalog.active{background:#c0392b;border-color:#c0392b;color:#fff}
+  .cat-bar{display:flex;justify-content:flex-end;padding:12px 24px 0;max-width:620px}
+  .cat-open{font-size:12.5px;font-weight:700;color:var(--muted);text-decoration:none}
+  .cat-frame{display:block;width:calc(100% - 48px);max-width:620px;height:78vh;min-height:520px;
+    margin:10px 24px 0;border:1px solid var(--line);border-radius:14px;background:#f5f2ed}
+  @media(max-width:600px){.cat-frame{width:calc(100% - 32px);margin:10px 16px 0}.cat-bar{padding:12px 16px 0}}
   .sup-bar .newreq-btn{background:#7a5cc9}
   .sup-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;position:relative}
   .sup-card.pending{border-color:#7a5cc9;box-shadow:0 0 0 1px #efeafa}
@@ -509,6 +515,7 @@
     <button class="mode-btn" id="mode-tx" onclick="setBranchMode('transfers')">💳 الحوالات</button>
     <button class="mode-btn" id="mode-arrival" onclick="setBranchMode('arrival')">📢 إبلاغ العميل</button>
     <button class="mode-btn" id="mode-supplies" onclick="setBranchMode('supplies')">🧰 طلب مستلزمات</button>
+    <button class="mode-btn" id="mode-catalog" onclick="setBranchMode('catalog')">📘 الكتالوج</button>
   </div>
   <div id="partsView">
     <div class="tabs" id="tabs"></div>
@@ -548,6 +555,10 @@
       <span class="tx-hint">اطلب مستلزمات فرعك من الإدارة (أدوات، تغليف، قرطاسية…).</span>
     </div>
     <div class="list" id="supList"></div>
+  </div>
+  <div id="catalogView" class="hidden">
+    <div class="cat-bar"><a class="cat-open" href="catalog.html" target="_blank" rel="noopener">⛶ فتح بملء الشاشة</a></div>
+    <iframe id="catFrame" class="cat-frame" title="كتالوج السيارات"></iframe>
   </div>
 </div>
 
@@ -1676,11 +1687,14 @@ function setBranchMode(m){
   document.getElementById("txView").classList.toggle("hidden",m!=="transfers");
   document.getElementById("arrivalView").classList.toggle("hidden",m!=="arrival");
   document.getElementById("suppliesView").classList.toggle("hidden",m!=="supplies");
+  document.getElementById("mode-catalog").classList.toggle("active",m==="catalog");
+  document.getElementById("catalogView").classList.toggle("hidden",m!=="catalog");
   const nr=document.getElementById("hdNewReq"); if(nr) nr.style.display=(m==="parts")?"":"none";
   const fab=document.getElementById("fab"); if(fab) fab.style.display=(m==="parts")?"":"none";
   if(m==="transfers") renderBranchTransfers();
   if(m==="arrival") initArrivalForm();
   if(m==="supplies") renderBranchSupplies();
+  if(m==="catalog"){ const f=document.getElementById("catFrame"); if(!f.src) f.src="catalog.html"; }
 }
 
 /* ===== طلب المستلزمات ===== */
